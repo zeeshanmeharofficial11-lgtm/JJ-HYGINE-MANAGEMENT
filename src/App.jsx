@@ -2085,21 +2085,71 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
     return { completed, total };
   };
 
-  const handleSubmitForm = () => {
+    const handleSubmitForm = async () => {
     const stats = getCompletionStats();
     if (stats.completed !== stats.total) {
       alert('⚠️ Please complete all required fields before submitting! 📋');
       return;
     }
-    
-    const result = Database.saveChecklist({ ...checklist, employeePhoto, bikePhoto }, user.username);
-    if (result.success) {
+
+    // Full payload we want to save
+    const payload = {
+      ...checklist,
+      basicInfo: {
+        ...checklist.basicInfo,
+        employeeType,
+      },
+      employeePhoto,
+      bikePhoto,
+    };
+
+    try {
+      // 1) Save into in-memory Database (existing behaviour)
+      const result = Database.saveChecklist(payload, user.username);
+
+      // 2) Persist checklist to Supabase
+      try {
+        await supabase.from('checklists').insert([
+          {
+            data: {
+              ...payload,
+              savedBy: user.username,
+              savedAt: new Date().toISOString(),
+            },
+          },
+        ]);
+      } catch (dbError) {
+        console.error('Supabase insert failed (checklists)', dbError);
+      }
+
+      // 3) Persist user progress (points / level / streak) to Supabase
+      try {
+        const profile = Database.users[user.username.toLowerCase()];
+        if (profile) {
+          await supabase.from('user_progress').upsert([
+            {
+              username: user.username.toLowerCase(),
+              points: profile.points,
+              level: profile.level,
+              streak: profile.streak,
+              last_check_date: profile.lastCheckDate || null,
+            },
+          ]);
+        }
+      } catch (progressError) {
+        console.error('Supabase upsert failed (user_progress)', progressError);
+      }
+
       setEarnedPoints(result.points);
       setShowSuccess(true);
+
       setTimeout(() => {
         setShowSuccess(false);
-        onSubmit();
+        onSubmit(); // this already sends you back to dashboard
       }, 3000);
+    } catch (err) {
+      console.error(err);
+      alert('Something went wrong while saving the checklist.');
     }
   };
 
@@ -2628,11 +2678,30 @@ const StaffConfigModal = ({ branch, type, onClose, onSave, darkMode }) => {
   const currentConfig = Database.getStaffConfig(branch, type);
   const [config, setConfig] = useState(currentConfig);
 
-  const handleSave = () => {
+    const handleSave = async () => {
+    // keep the in-memory update
     Database.updateStaffConfig(branch, type, config);
+
+    // sync the config to Supabase
+    try {
+      await supabase
+        .from('staff_config')
+        .upsert(
+          {
+            branch,
+            staff_type: type,
+            config, // stored as jsonb
+          },
+          { onConflict: 'branch,staff_type' } // requires unique constraint on (branch, staff_type)
+        );
+    } catch (error) {
+      console.error('Error saving staff config to Supabase', error);
+    }
+
     onSave();
     onClose();
   };
+
 
   const updateShift = (shift, field, value) => {
     setConfig({
@@ -3822,84 +3891,187 @@ const Reports = ({ onNavigate, user, darkMode }) => {
 
 const App = () => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [currentView, setCurrentView] = useState('dashboard');
-  const [stats, setStats] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
-
-  useEffect(() => {
-    if (currentUser) {
-      const userBranch = currentUser.role === 'admin' ? null : currentUser.branch;
-      setStats(Database.getStats(userBranch));
+  const [screen, setScreen] = useState('login'); // 'login' | 'dashboard' | 'checklist' | 'config' | 'reports'
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      return localStorage.getItem('jj-hygiene-dark') === 'true';
+    } catch {
+      return false;
     }
-  }, [currentUser]);
+  });
+  const [syncing, setSyncing] = useState(true);
+
+  // Keep Database.darkMode in sync + persist preference
+  useEffect(() => {
+    Database.darkMode = darkMode;
+    try {
+      localStorage.setItem('jj-hygiene-dark', darkMode ? 'true' : 'false');
+    } catch {
+      // ignore
+    }
+  }, [darkMode]);
+
+  // Initial Supabase → in-memory sync
+  useEffect(() => {
+    const syncData = async () => {
+      try {
+        // Make sure branch configs exist
+        Database.initBranchConfig();
+
+        // 1) Load checklists
+        const { data: checklistRows, error: checklistError } = await supabase
+          .from('checklists')
+          .select('data')
+          .order('created_at', { ascending: true });
+
+        if (checklistError) {
+          console.error('Error loading checklists from Supabase', checklistError);
+        } else if (checklistRows) {
+          Database.checklists = checklistRows.map((row) => row.data);
+        }
+
+        // 2) Load staff config
+        const { data: staffRows, error: staffError } = await supabase
+          .from('staff_config')
+          .select('branch, staff_type, config');
+
+        if (staffError) {
+          console.error('Error loading staff config from Supabase', staffError);
+        } else if (staffRows) {
+          staffRows.forEach(({ branch, staff_type, config }) => {
+            if (!Database.branchStaffConfig[branch]) {
+              Database.branchStaffConfig[branch] = {
+                rider: {
+                  total: 0,
+                  shiftA: { count: 0, dayOff: 0, noShow: 0, medical: 0 },
+                  shiftB: { count: 0, dayOff: 0, noShow: 0, medical: 0 },
+                },
+                crew: {
+                  total: 0,
+                  shiftA: { count: 0, dayOff: 0, noShow: 0, medical: 0 },
+                  shiftB: { count: 0, dayOff: 0, noShow: 0, medical: 0 },
+                },
+                manager: {
+                  total: 0,
+                  shiftA: { count: 0, dayOff: 0, noShow: 0, medical: 0 },
+                  shiftB: { count: 0, dayOff: 0, noShow: 0, medical: 0 },
+                },
+              };
+            }
+            Database.branchStaffConfig[branch][staff_type] = config;
+          });
+        }
+
+        // 3) Load user progress (points/levels/streaks)
+        const { data: progressRows, error: progressError } = await supabase
+          .from('user_progress')
+          .select('*');
+
+        if (progressError) {
+          console.error('Error loading user_progress from Supabase', progressError);
+        } else if (progressRows) {
+          progressRows.forEach((row) => {
+            const key = row.username.toLowerCase();
+            if (Database.users[key]) {
+              const u = Database.users[key];
+              u.points = row.points ?? u.points;
+              u.level = row.level ?? u.level;
+              u.streak = row.streak ?? u.streak;
+              u.lastCheckDate = row.last_check_date ?? u.lastCheckDate;
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Error syncing with Supabase', e);
+      } finally {
+        setSyncing(false);
+      }
+    };
+
+    syncData();
+  }, []);
+
+  const handleToggleDarkMode = () => setDarkMode((prev) => !prev);
 
   const handleLogin = (user) => {
     setCurrentUser(user);
-    const userBranch = user.role === 'admin' ? null : user.branch;
-    setStats(Database.getStats(userBranch));
+    setScreen('dashboard');
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
-    setCurrentView('dashboard');
-    setStats(null);
+    setScreen('login');
   };
 
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    Database.darkMode = !darkMode;
-  };
+  const handleNavigate = (target) => setScreen(target);
 
-  const refreshStats = () => {
-    if (currentUser) {
-      const userBranch = currentUser.role === 'admin' ? null : currentUser.branch;
-      setStats(Database.getStats(userBranch));
-    }
-  };
-
-  const handleSubmit = () => {
-    refreshStats();
-    setCurrentView('dashboard');
-  };
-
+  // Not logged in → show login screen only
   if (!currentUser) {
-    return <LoginScreen onLogin={handleLogin} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />;
+    return (
+      <LoginScreen
+        onLogin={handleLogin}
+        darkMode={darkMode}
+        toggleDarkMode={handleToggleDarkMode}
+      />
+    );
+  }
+
+  const branchForStats =
+    currentUser.role === 'admin' ? null : currentUser.branch;
+  const stats = Database.getStats(branchForStats);
+
+  let content = null;
+  if (screen === 'dashboard') {
+    content = (
+      <Dashboard
+        onNavigate={handleNavigate}
+        stats={stats}
+        user={currentUser}
+        onLogout={handleLogout}
+        darkMode={darkMode}
+        toggleDarkMode={handleToggleDarkMode}
+      />
+    );
+  } else if (screen === 'checklist') {
+    content = (
+      <ChecklistForm
+        onNavigate={handleNavigate}
+        onSubmit={() => setScreen('dashboard')}
+        user={currentUser}
+        darkMode={darkMode}
+      />
+    );
+  } else if (screen === 'config') {
+    content = (
+      <StaffConfig
+        onNavigate={handleNavigate}
+        user={currentUser}
+        darkMode={darkMode}
+      />
+    );
+  } else if (screen === 'reports') {
+    content = (
+      <Reports
+        onNavigate={handleNavigate}
+        user={currentUser}
+        darkMode={darkMode}
+      />
+    );
   }
 
   return (
     <div className={darkMode ? 'dark' : ''}>
-      {currentView === 'dashboard' && stats && (
-        <Dashboard 
-          onNavigate={setCurrentView} 
-          stats={stats} 
-          user={currentUser} 
-          onLogout={handleLogout}
-          darkMode={darkMode}
-          toggleDarkMode={toggleDarkMode}
-        />
+      {syncing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="px-4 py-3 rounded-2xl bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center gap-3">
+            <span className="inline-block h-5 w-5 rounded-full border-2 border-orange-500 border-t-transparent animate-spin" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+              Syncing with Supabase...
+            </span>
+          </div>
+        </div>
       )}
-      {currentView === 'checklist' && (
-        <ChecklistForm 
-          onNavigate={setCurrentView} 
-          onSubmit={handleSubmit} 
-          user={currentUser}
-          darkMode={darkMode}
-        />
-      )}
-      {currentView === 'config' && (
-        <StaffConfig 
-          onNavigate={setCurrentView} 
-          user={currentUser}
-          darkMode={darkMode}
-        />
-      )}
-      {currentView === 'reports' && (
-        <Reports 
-          onNavigate={setCurrentView} 
-          user={currentUser}
-          darkMode={darkMode}
-        />
-      )}
+      {content}
     </div>
   );
 };
