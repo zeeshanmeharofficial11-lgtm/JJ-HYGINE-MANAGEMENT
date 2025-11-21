@@ -307,7 +307,7 @@ const Database = {
     }
     
     return insights;
-  }
+  },
     async syncFromSupabase() {
     try {
       // Ensure base structure exists
@@ -382,7 +382,7 @@ const Database = {
     } catch (err) {
       console.error('Error syncing from Supabase', err);
     }
-  },
+  }
 
 };
 
