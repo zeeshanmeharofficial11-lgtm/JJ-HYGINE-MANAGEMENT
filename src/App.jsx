@@ -529,8 +529,8 @@ const LoginScreen = ({ onLogin, darkMode, toggleDarkMode }) => {
   };
 
   const handleBranchSelect = (branch) => {
-    setUsername(branch.user);
-    setPassword(branch.pass);
+    // setUsername(branch.user);
+    // setPassword(branch.pass);
     setShowBranchMenu(false);
   };
 
