@@ -7,6 +7,8 @@ import {
   CheckCircle, XCircle
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const Database = {
   users: {
@@ -2048,17 +2050,20 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
       { id: 4, name: 'Society Gate Passes', emoji: '🎫', required: false, status: null, remarks: '', hasGatePass: false }
     ],
     bikeInspection: [
-      { id: 1, name: 'Fuel Level', emoji: '⛽', status: null, remarks: '' },
-      { id: 2, name: 'Front Tire Condition', emoji: '🛞', status: null, remarks: '' },
-      { id: 3, name: 'Back Tire Condition', emoji: '🛞', status: null, remarks: '' },
-      { id: 4, name: 'Front Brake Working', emoji: '🛑', status: null, remarks: '' },
-      { id: 5, name: 'Back Brake Working', emoji: '🛑', status: null, remarks: '' },
-      { id: 6, name: 'Bike Clean Condition', emoji: '🧽', status: null, remarks: '' },
-      { id: 7, name: 'Chain Cover - Top', emoji: '⛓️', status: null, remarks: '' },
-      { id: 8, name: 'Chain Cover - Bottom', emoji: '⛓️', status: null, remarks: '' },
-      { id: 9, name: 'Left View Mirror', emoji: '🪞', status: null, remarks: '' },
-      { id: 10, name: 'Right View Mirror', emoji: '🪞', status: null, remarks: '' }
-    ],
+  { id: 1, name: 'Fuel Level', emoji: '⛽', status: null, remarks: '' },
+  { id: 2, name: 'Front Tire Condition', emoji: '🛞', status: null, remarks: '' },
+  { id: 3, name: 'Back Tire Condition', emoji: '🛞', status: null, remarks: '' },
+  { id: 4, name: 'Front Brake Working', emoji: '🛑', status: null, remarks: '' },
+  { id: 5, name: 'Back Brake Working', emoji: '🛑', status: null, remarks: '' },
+  { id: 6, name: 'Bike Clean Condition', emoji: '🧽', status: null, remarks: '' },
+  { id: 7, name: 'Chain Cover - Top', emoji: '⛓️', status: null, remarks: '' },
+  { id: 8, name: 'Chain Cover - Bottom', emoji: '⛓️', status: null, remarks: '' },
+  { id: 9, name: 'Left View Mirror', emoji: '🪞', status: null, remarks: '' },
+  { id: 10, name: 'Right View Mirror', emoji: '🪞', status: null, remarks: '' },
+  { id: 11, name: 'Bike Horn', emoji: '📯', status: null, remarks: '' },
+  { id: 12, name: 'Bike Meter', emoji: '📊', status: null, remarks: '' }
+],
+
     lights: [
       { id: 1, name: 'Headlights - Main & Low Beam', emoji: '💡', status: null, remarks: '' },
       { id: 2, name: 'Indicator - Front Left', emoji: '⬅️', status: null, remarks: '' },
@@ -3063,22 +3068,27 @@ const StaffConfig = ({ onNavigate, user, darkMode }) => {
 const Reports = ({ onNavigate, user, darkMode }) => {
   const userBranch = user.role === 'admin' ? '' : user.branch;
   const [filters, setFilters] = useState({ branch: userBranch, date: '', employeeType: '' });
-  const checklists = Database.getChecklists(filters);
   const [expandedId, setExpandedId] = useState(null);
 
+  // Date range for PDF / reporting
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const checklists = Database.getChecklists(filters);
+
   // Calculate branch overview statistics
-  const getBranchOverview = () => {
+  const getBranchOverview = (sourceChecklists = Database.checklists) => {
     const branches = user.role === 'admin' ? Database.branches : [user.branch];
     const overview = branches.map(branch => {
-      const branchChecklists = Database.checklists.filter(c => c.basicInfo.branch === branch);
+      const branchChecklists = sourceChecklists.filter(c => c.basicInfo.branch === branch);
       
       const riderChecklists = branchChecklists.filter(c => c.basicInfo.employeeType === 'rider');
       const crewChecklists = branchChecklists.filter(c => c.basicInfo.employeeType === 'crew');
       const managerChecklists = branchChecklists.filter(c => c.basicInfo.employeeType === 'manager');
       
-      const calculateAvgScore = (checklists) => {
-        if (checklists.length === 0) return 0;
-        const scores = checklists.map(c => Database.calculateChecklistScore(c));
+      const calculateAvgScore = (list) => {
+        if (list.length === 0) return 0;
+        const scores = list.map(c => Database.calculateChecklistScore(c));
         return (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
       };
       
@@ -3106,9 +3116,60 @@ const Reports = ({ onNavigate, user, darkMode }) => {
 
   const branchOverview = getBranchOverview();
 
-    const downloadPDF = () => {
+  const downloadPDF = () => {
     try {
       const now = new Date().toLocaleString();
+
+      // 1) Build the base set for PDF: respect branch + employee filters
+      const baseFiltered = Database.checklists.filter((c) => {
+        const branchMatch = !filters.branch || c.basicInfo.branch === filters.branch;
+        const typeMatch = !filters.employeeType || c.basicInfo.employeeType === filters.employeeType;
+        return branchMatch && typeMatch;
+      });
+
+      // 2) Apply date range (if given) or single date (filters.date)
+      let pdfChecklists = baseFiltered;
+
+      if (startDate || endDate || filters.date) {
+        pdfChecklists = baseFiltered.filter((c) => {
+          const rawDate = c.timestamp || (c.basicInfo && c.basicInfo.date);
+          if (!rawDate) return false;
+
+          const d = new Date(rawDate);
+          if (Number.isNaN(d.getTime())) return false;
+
+          const iso = d.toISOString().slice(0, 10); // YYYY-MM-DD
+
+          // If range is set, it takes priority
+          if (startDate || endDate) {
+            const afterStart = !startDate || iso >= startDate;
+            const beforeEnd = !endDate || iso <= endDate;
+            return afterStart && beforeEnd;
+          }
+
+          // Otherwise fall back to single-date filter (exact match)
+          if (filters.date) {
+            return iso === filters.date;
+          }
+
+          return true;
+        });
+      }
+
+      if (!pdfChecklists.length) {
+        alert('No inspections found for the selected filters / date range.');
+        return;
+      }
+
+      // 3) Branch overview for this filtered set
+      const pdfBranchOverview = getBranchOverview(pdfChecklists);
+
+      // 4) Human-readable label for the date range
+      let rangeLabel = 'All dates';
+      if (startDate && endDate) rangeLabel = `${startDate} to ${endDate}`;
+      else if (startDate) rangeLabel = `From ${startDate}`;
+      else if (endDate) rangeLabel = `Until ${endDate}`;
+      else if (filters.date) rangeLabel = filters.date;
 
       let htmlContent = `
 <!DOCTYPE html>
@@ -3178,10 +3239,11 @@ const Reports = ({ onNavigate, user, darkMode }) => {
     <h1>Johnny & Jugnu</h1>
     <h2>Hygiene Inspection Reports</h2>
     <div class="meta">Generated: ${now}</div>
+    <div class="meta">Date Range: ${rangeLabel}</div>
   </div>
 `;
 
-      // Branch overview
+      // Branch overview (for the filtered data set only)
       htmlContent += `
 <h2 class="section-title">Branch Overview</h2>
 <table>
@@ -3198,7 +3260,7 @@ const Reports = ({ onNavigate, user, darkMode }) => {
   <tbody>
 `;
 
-      branchOverview.forEach((b) => {
+      pdfBranchOverview.forEach((b) => {
         htmlContent += `
   <tr>
     <td>${b.branch}</td>
@@ -3216,23 +3278,96 @@ const Reports = ({ onNavigate, user, darkMode }) => {
 </table>
 `;
 
-      // Individual checklists
+      // Helper: which sections to dump items from
+      const sections = [
+        { key: 'safetyChecks', label: 'Safety Checks' },
+        { key: 'documents', label: 'Documents' },
+        { key: 'bikeInspection', label: 'Bike Inspection' },
+        { key: 'lights', label: 'Lights' },
+        { key: 'hygiene', label: 'Hygiene' }
+      ];
+
+      // Individual checklists with ALL steps / items
       htmlContent += `
-<h2 class="section-title">Individual Inspections</h2>
+<h2 class="section-title">Individual Inspections (All Steps)</h2>
 `;
 
-      checklists.forEach((c, idx) => {
+      pdfChecklists.forEach((c, idx) => {
         const basic = c.basicInfo || {};
         const score = Database.calculateChecklistScore(c).toFixed(1);
+
+        // Flatten all items with section info
+        const allItems = [];
+
+        sections.forEach((section) => {
+          const list = c[section.key];
+          if (!Array.isArray(list)) return;
+
+          list.forEach((item) => {
+            // Apply same conditional skip logic as Excel export
+            if (item.name === 'Society Gate Passes' && !item.hasGatePass) return;
+            if (item.name === 'JJ Jacket (As Per Season)' && !item.hasJacket) return;
+
+            const statusLabel =
+              item.status === true ? 'PASS' :
+              item.status === false ? 'FAIL' :
+              'N/A';
+
+            allItems.push({
+              section: section.label,
+              name: item.name || '',
+              status: statusLabel,
+              remarks: item.remarks || ''
+            });
+          });
+        });
+
+        const dateDisplay = basic.date ||
+          (c.timestamp ? new Date(c.timestamp).toLocaleString() : '');
 
         htmlContent += `
 <div class="report-card">
   <div><strong>#${idx + 1} – ${basic.employeeName || 'Unknown'} (${basic.employeeType || ''})</strong></div>
   <div>Branch: ${basic.branch || ''}</div>
-  <div>Date: ${basic.date || ''}</div>
+  <div>Date / Time: ${dateDisplay}</div>
   <div>Shift: ${basic.shift || ''}</div>
   <div>Manager: ${basic.managerType || ''}</div>
   <div>Score: <strong>${score}%</strong></div>
+  <br />
+  <table>
+    <thead>
+      <tr>
+        <th>Section</th>
+        <th>Item</th>
+        <th>Status</th>
+        <th>Remarks</th>
+      </tr>
+    </thead>
+    <tbody>
+`;
+
+        if (allItems.length === 0) {
+          htmlContent += `
+      <tr>
+        <td colspan="4">No checklist items recorded.</td>
+      </tr>
+`;
+        } else {
+          allItems.forEach((item) => {
+            htmlContent += `
+      <tr>
+        <td>${item.section}</td>
+        <td>${item.name}</td>
+        <td>${item.status}</td>
+        <td>${item.remarks}</td>
+      </tr>
+`;
+          });
+        }
+
+        htmlContent += `
+    </tbody>
+  </table>
 </div>
 `;
       });
@@ -3255,7 +3390,6 @@ const Reports = ({ onNavigate, user, darkMode }) => {
       alert('Could not generate the PDF. Check console for details.');
     }
   };
-
 
   const downloadExcel = () => {
     try {
@@ -3395,12 +3529,12 @@ const Reports = ({ onNavigate, user, darkMode }) => {
             </h2>
             <div className="flex gap-2">
               <button
-  onClick={downloadPDF}
-  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-semibold hover:from-blue-600 hover:to-purple-600 shadow-lg"
->
-  <Download size={16} />
-  Download / Print
-</button>
+                onClick={downloadPDF}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-semibold hover:from-blue-600 hover:to-purple-600 shadow-lg"
+              >
+                <Download size={16} />
+                Download / Print
+              </button>
 
               <button
                 onClick={downloadExcel}
@@ -3412,7 +3546,26 @@ const Reports = ({ onNavigate, user, darkMode }) => {
               </button>
             </div>
           </div>
+
+          {/* Date range controls for PDF */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className={`p-3 border rounded-xl ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+              placeholder="📅 From (PDF range)"
+            />
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className={`p-3 border rounded-xl ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+              placeholder="📅 To (PDF range)"
+            />
+          </div>
           
+          {/* On-screen filters (existing) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {user.role === 'admin' ? (
               <select 
@@ -3483,7 +3636,7 @@ const Reports = ({ onNavigate, user, darkMode }) => {
           </div>
 
           {/* Branch Overview Section with Trends */}
-          <div className={`mb-8 ${darkMode ? 'bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800' : 'bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50'} border-2 ${darkMode ? 'border-gray-700' : 'border-gray-200'} rounded-3xl p-6 shadow-2xl relative overflow-hidden`}>
+          <div className={`${darkMode ? 'bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800' : 'bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50'} border-2 ${darkMode ? 'border-gray-700' : 'border-gray-200'} rounded-3xl p-6 shadow-2xl relative overflow-hidden mb-8`}>
             {/* Background Decoration */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full blur-3xl"></div>
             
@@ -3703,125 +3856,126 @@ const Reports = ({ onNavigate, user, darkMode }) => {
               📋 Detailed Inspection Reports
             </h3>
 
-          <div className="space-y-4">
-            {checklists.map(checklist => {
-              const score = Database.calculateChecklistScore(checklist);
-              const failedItems = Database.getChecklistSummary(checklist);
-              const isExpanded = expandedId === checklist.id;
+            <div className="space-y-4">
+              {checklists.map(checklist => {
+                const score = Database.calculateChecklistScore(checklist);
+                const failedItems = Database.getChecklistSummary(checklist);
+                const isExpanded = expandedId === checklist.id;
 
-              return (
-                <div key={checklist.id} className={`border rounded-xl overflow-hidden ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <div 
-                    className={`p-4 cursor-pointer transition-all hover:shadow-md ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`} 
-                    onClick={() => setExpandedId(isExpanded ? null : checklist.id)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {checklist.basicInfo.branch}
-                          </h3>
-                          <span className="text-xs bg-purple-500 text-white px-2 py-1 rounded-full capitalize">
-                            {checklist.basicInfo.employeeType}
-                          </span>
-                        </div>
-                        <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                          {checklist.basicInfo.employeeName} - {checklist.basicInfo.employeeId}
-                        </p>
-                        <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          {new Date(checklist.timestamp).toLocaleString()} • Shift {checklist.basicInfo.shift}
-                        </p>
-                      </div>
-                      <div className="text-right flex items-center gap-3">
-                        <div className={`text-2xl font-bold ${
-                          score >= 90 ? 'text-green-600' : score >= 70 ? 'text-yellow-600' : 'text-red-600'
-                        }`}>
-                          {score.toFixed(0)}%
-                        </div>
-                        {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {isExpanded && (
-                    <div className={`p-4 border-t ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-                      {(checklist.employeePhoto || checklist.bikePhoto) && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                          {checklist.employeePhoto && (
-                            <div>
-                              <p className={`text-xs font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                Employee Photo
-                              </p>
-                              <div className={`border rounded-lg overflow-hidden ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} aspect-square max-h-48`}>
-                                <img src={checklist.employeePhoto} alt="Employee" className="w-full h-full object-contain p-2" />
-                              </div>
-                            </div>
-                          )}
-                          {checklist.bikePhoto && (
-                            <div>
-                              <p className={`text-xs font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                Bike Photo
-                              </p>
-                              <div className={`border rounded-lg overflow-hidden ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} aspect-square max-h-48`}>
-                                <img src={checklist.bikePhoto} alt="Bike" className="w-full h-full object-contain p-2" />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      
-                      {failedItems.length > 0 ? (
-                        <div className={`${darkMode ? 'bg-red-900/20' : 'bg-red-50'} border ${darkMode ? 'border-red-700' : 'border-red-200'} rounded-lg p-3`}>
-                          <h4 className={`font-bold mb-2 flex items-center gap-2 ${darkMode ? 'text-red-200' : 'text-red-900'}`}>
-                            <AlertCircle size={16} />
-                            Failed Items ({failedItems.length})
-                          </h4>
-                          <ul className="space-y-2">
-                            {failedItems.map((item, idx) => (
-                              <li key={idx} className="text-sm">
-                                <span className={`font-medium ${darkMode ? 'text-red-300' : 'text-red-700'}`}>
-                                  • {item.name}
-                                </span>
-                                <span className={`text-xs ml-2 capitalize ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
-                                  ({item.section.replace(/([A-Z])/g, ' $1').trim()})
-                                </span>
-                                {item.remarks && (
-                                  <p className={`text-xs ml-4 mt-1 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
-                                    Remarks: {item.remarks}
-                                  </p>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : (
-                        <div className={`${darkMode ? 'bg-green-900/20' : 'bg-green-50'} border ${darkMode ? 'border-green-700' : 'border-green-200'} rounded-lg p-3 text-center`}>
-                          <p className={`font-medium ${darkMode ? 'text-green-200' : 'text-green-700'}`}>
-                            ✓ All items passed!
+                return (
+                  <div key={checklist.id} className={`border rounded-xl overflow-hidden ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <div 
+                      className={`p-4 cursor-pointer transition-all hover:shadow-md ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`} 
+                      onClick={() => setExpandedId(isExpanded ? null : checklist.id)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                              {checklist.basicInfo.branch}
+                            </h3>
+                            <span className="text-xs bg-purple-500 text-white px-2 py-1 rounded-full capitalize">
+                              {checklist.basicInfo.employeeType}
+                            </span>
+                          </div>
+                          <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                            {checklist.basicInfo.employeeName} - {checklist.basicInfo.employeeId}
+                          </p>
+                          <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {new Date(checklist.timestamp).toLocaleString()} • Shift {checklist.basicInfo.shift}
                           </p>
                         </div>
-                      )}
+                        <div className="text-right flex items-center gap-3">
+                          <div className={`text-2xl font-bold ${
+                            score >= 90 ? 'text-green-600' : score >= 70 ? 'text-yellow-600' : 'text-red-600'
+                          }`}>
+                            {score.toFixed(0)}%
+                          </div>
+                          {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                        </div>
+                      </div>
                     </div>
-                  )}
+                    
+                    {isExpanded && (
+                      <div className={`p-4 border-t ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                        {(checklist.employeePhoto || checklist.bikePhoto) && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            {checklist.employeePhoto && (
+                              <div>
+                                <p className={`text-xs font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                  Employee Photo
+                                </p>
+                                <div className={`border rounded-lg overflow-hidden ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} aspect-square max-h-48`}>
+                                  <img src={checklist.employeePhoto} alt="Employee" className="w-full h-full object-contain p-2" />
+                                </div>
+                              </div>
+                            )}
+                            {checklist.bikePhoto && (
+                              <div>
+                                <p className={`text-xs font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                  Bike Photo
+                                </p>
+                                <div className={`border rounded-lg overflow-hidden ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} aspect-square max-h-48`}>
+                                  <img src={checklist.bikePhoto} alt="Bike" className="w-full h-full object-contain p-2" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {failedItems.length > 0 ? (
+                          <div className={`${darkMode ? 'bg-red-900/20' : 'bg-red-50'} border ${darkMode ? 'border-red-700' : 'border-red-200'} rounded-lg p-3`}>
+                            <h4 className={`font-bold mb-2 flex items-center gap-2 ${darkMode ? 'text-red-200' : 'text-red-900'}`}>
+                              <AlertCircle size={16} />
+                              Failed Items ({failedItems.length})
+                            </h4>
+                            <ul className="space-y-2">
+                              {failedItems.map((item, idx) => (
+                                <li key={idx} className="text-sm">
+                                  <span className={`font-medium ${darkMode ? 'text-red-300' : 'text-red-700'}`}>
+                                    • {item.name}
+                                  </span>
+                                  <span className={`text-xs ml-2 capitalize ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
+                                    ({item.section.replace(/([A-Z])/g, ' $1').trim()})
+                                  </span>
+                                  {item.remarks && (
+                                    <p className={`text-xs ml-4 mt-1 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
+                                      Remarks: {item.remarks}
+                                    </p>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : (
+                          <div className={`${darkMode ? 'bg-green-900/20' : 'bg-green-50'} border ${darkMode ? 'border-green-700' : 'border-green-200'} rounded-lg p-3 text-center`}>
+                            <p className={`font-medium ${darkMode ? 'text-green-200' : 'text-green-700'}`}>
+                              ✓ All items passed!
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              
+              {checklists.length === 0 && (
+                <div className="text-center py-12">
+                  <BarChart3 size={48} className={`mx-auto mb-4 opacity-50 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`} />
+                  <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
+                    No reports found matching the filters
+                  </p>
                 </div>
-              );
-            })}
-            
-            {checklists.length === 0 && (
-              <div className="text-center py-12">
-                <BarChart3 size={48} className={`mx-auto mb-4 opacity-50 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`} />
-                <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
-                  No reports found matching the filters
-                </p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
     </div>
-    </div>
   );
 };
+
 
 const App = () => {
   const [user, setUser] = useState(null);
