@@ -1,5 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
-import { Check, X, Camera, Save, AlertCircle, BarChart3, Users, Building, TrendingUp, Award, AlertTriangle, Edit2, ChevronDown, ChevronUp, LogOut, Lock, Star, Zap, Trophy, Target, Flame, Moon, Sun, Download, Mail, Bell, Filter, Calendar, MapPin, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { 
+  Check, X, Camera, Save, AlertCircle, BarChart3, Users, Building, TrendingUp, Award,
+  AlertTriangle, Edit2, ChevronDown, ChevronUp, LogOut, Lock, Star, Zap, Trophy,
+  Target, Flame, Moon, Sun, Download, Mail, Bell, Filter, Calendar, MapPin, Clock,
+  CheckCircle, XCircle
+} from 'lucide-react';
+import { supabase } from './supabaseClient';
 
 const Database = {
   users: {
@@ -301,7 +308,85 @@ const Database = {
     
     return insights;
   }
+    async syncFromSupabase() {
+    try {
+      // Ensure base structure exists
+      this.initBranchConfig();
+
+      // 1) Load staff_config → branchStaffConfig
+      const { data: staffRows, error: staffError } = await supabase
+        .from('staff_config')
+        .select('branch, staff_type, config');
+
+      if (!staffError && staffRows) {
+        staffRows.forEach((row) => {
+          if (!this.branchStaffConfig[row.branch]) {
+            // If branch not known yet, create default skeleton
+            this.branchStaffConfig[row.branch] = {
+              rider: { 
+                total: 0, 
+                shiftA: { count: 0, dayOff: 0, noShow: 0, medical: 0 },
+                shiftB: { count: 0, dayOff: 0, noShow: 0, medical: 0 }
+              },
+              crew: { 
+                total: 0, 
+                shiftA: { count: 0, dayOff: 0, noShow: 0, medical: 0 },
+                shiftB: { count: 0, dayOff: 0, noShow: 0, medical: 0 }
+              },
+              manager: { 
+                total: 0, 
+                shiftA: { count: 0, dayOff: 0, noShow: 0, medical: 0 },
+                shiftB: { count: 0, dayOff: 0, noShow: 0, medical: 0 }
+              }
+            };
+          }
+
+          if (this.branchStaffConfig[row.branch] && this.branchStaffConfig[row.branch][row.staff_type]) {
+            this.branchStaffConfig[row.branch][row.staff_type] = row.config;
+          }
+        });
+      } else if (staffError) {
+        console.error('Error loading staff_config from Supabase', staffError);
+      }
+
+      // 2) Load user_progress → Database.users points / level / streak
+      const { data: progressRows, error: progressError } = await supabase
+        .from('user_progress')
+        .select('*');
+
+      if (!progressError && progressRows) {
+        progressRows.forEach((row) => {
+          const key = row.username.toLowerCase();
+          if (this.users[key]) {
+            this.users[key].points = row.points ?? 0;
+            this.users[key].level = row.level ?? 1;
+            this.users[key].streak = row.streak ?? 0;
+            this.users[key].lastCheckDate = row.last_check_date || null;
+          }
+        });
+      } else if (progressError) {
+        console.error('Error loading user_progress from Supabase', progressError);
+      }
+
+      // 3) Load checklists → Database.checklists
+      const { data: checklistRows, error: checklistError } = await supabase
+        .from('checklists')
+        .select('data')
+        .order('created_at', { ascending: true });
+
+      if (!checklistError && checklistRows) {
+        this.checklists = checklistRows.map((row) => row.data);
+      } else if (checklistError) {
+        console.error('Error loading checklists from Supabase', checklistError);
+      }
+    } catch (err) {
+      console.error('Error syncing from Supabase', err);
+    }
+  },
+
 };
+
+
 
 Database.initBranchConfig();
 
@@ -3021,21 +3106,22 @@ const Reports = ({ onNavigate, user, darkMode }) => {
 
   const branchOverview = getBranchOverview();
 
-  const downloadPDF = () => {
+    const downloadPDF = () => {
     try {
-      // Create HTML content for PDF
+      const now = new Date().toLocaleString();
+
       let htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Johnny & Jugnu - Hygiene Inspection Reports</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
-      background: white;
-      color: black;
+      background: #ffffff;
+      color: #000000;
     }
     .header {
       text-align: center;
@@ -3048,280 +3134,128 @@ const Reports = ({ onNavigate, user, darkMode }) => {
     .header h1 {
       margin: 0;
       font-size: 28px;
-      font-weight: bold;
     }
     .header h2 {
       margin: 10px 0 0 0;
       font-size: 18px;
       font-weight: normal;
     }
-    .meta-info {
-      background: #f5f5f5;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-    }
-    .report-card {
-      border: 2px solid #333;
-      padding: 20px;
-      margin-bottom: 30px;
-      page-break-inside: avoid;
-      background: white;
-    }
-    .report-header {
-      background: #333;
-      color: white;
-      padding: 10px;
-      margin: -20px -20px 20px -20px;
-      font-size: 18px;
-      font-weight: bold;
-    }
-    .section {
-      margin-bottom: 15px;
+    .meta {
+      margin-top: 10px;
+      font-size: 13px;
     }
     .section-title {
+      font-size: 18px;
       font-weight: bold;
-      color: #333;
-      font-size: 16px;
-      margin-bottom: 8px;
+      margin: 20px 0 10px 0;
       border-bottom: 2px solid #333;
       padding-bottom: 5px;
     }
-    .info-row {
-      margin: 5px 0;
-      display: flex;
-      padding: 5px 0;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 25px;
+      font-size: 13px;
     }
-    .info-label {
-      font-weight: bold;
-      width: 200px;
-      color: #555;
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px 8px;
+      text-align: left;
     }
-    .info-value {
-      flex: 1;
-      color: #000;
+    th {
+      background: #f0f0f0;
     }
-    .score-box {
-      text-align: center;
+    .report-card {
+      border: 2px solid #333;
       padding: 15px;
-      margin: 15px 0;
-      border-radius: 8px;
-      font-size: 24px;
-      font-weight: bold;
-    }
-    .score-excellent {
-      background: #d4edda;
-      color: #155724;
-      border: 2px solid #28a745;
-    }
-    .score-good {
-      background: #fff3cd;
-      color: #856404;
-      border: 2px solid #ffc107;
-    }
-    .score-poor {
-      background: #f8d7da;
-      color: #721c24;
-      border: 2px solid #dc3545;
-    }
-    .failed-items {
-      background: #fff3cd;
-      border: 2px solid #ffc107;
-      padding: 15px;
-      border-radius: 8px;
-      margin: 15px 0;
-    }
-    .failed-item {
-      margin: 10px 0;
-      padding: 10px;
-      background: white;
-      border-left: 4px solid #dc3545;
-    }
-    .signature-section {
-      margin-top: 30px;
-      padding-top: 20px;
-      border-top: 2px solid #333;
-    }
-    .signature-line {
-      margin-top: 40px;
-      border-bottom: 2px solid #000;
-      width: 300px;
-      display: inline-block;
-    }
-    .footer {
-      text-align: center;
-      margin-top: 30px;
-      padding: 20px;
-      border-top: 3px solid #333;
-      color: #666;
-      font-size: 12px;
-    }
-    @media print {
-      body { margin: 0; }
-      .report-card { page-break-after: always; }
+      margin-bottom: 25px;
+      page-break-inside: avoid;
     }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>✨ JOHNNY & JUGNU ✨</h1>
-    <h2>HYGIENE INSPECTION REPORTS</h2>
-  </div>
-  
-  <div class="meta-info">
-    <strong>📅 Generated:</strong> ${new Date().toLocaleString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    })}<br>
-    <strong>📊 Total Reports:</strong> ${checklists.length}<br>
-    <strong>🔍 Filters:</strong> ${filters.branch || 'All Branches'} | ${filters.date || 'All Dates'} | ${filters.employeeType || 'All Types'}
+    <h1>Johnny & Jugnu</h1>
+    <h2>Hygiene Inspection Reports</h2>
+    <div class="meta">Generated: ${now}</div>
   </div>
 `;
 
-      checklists.forEach((checklist, index) => {
-        const score = Database.calculateChecklistScore(checklist);
-        const failedItems = Database.getChecklistSummary(checklist);
-        const passedItems = (() => {
-          let total = 0;
-          ['safetyChecks', 'documents', 'bikeInspection', 'lights', 'hygiene'].forEach(section => {
-            if (checklist[section]) {
-              checklist[section].forEach(item => {
-                if (item.name === 'Society Gate Passes' && !item.hasGatePass) return;
-                if (item.name === 'JJ Jacket (As Per Season)' && !item.hasJacket) return;
-                if (item.status === true) total++;
-              });
-            }
-          });
-          return total;
-        })();
-        
-        const scoreClass = score >= 90 ? 'score-excellent' : score >= 70 ? 'score-good' : 'score-poor';
-        const scoreStatus = score >= 90 ? 'EXCELLENT ✅' : score >= 70 ? 'GOOD ⚠️' : 'NEEDS IMPROVEMENT ❌';
-        
+      // Branch overview
+      htmlContent += `
+<h2 class="section-title">Branch Overview</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Branch</th>
+      <th>Total Inspections</th>
+      <th>Rider Avg</th>
+      <th>Crew Avg</th>
+      <th>Manager Avg</th>
+      <th>Overall Avg</th>
+    </tr>
+  </thead>
+  <tbody>
+`;
+
+      branchOverview.forEach((b) => {
         htmlContent += `
-  <div class="report-card">
-    <div class="report-header">
-      INSPECTION REPORT #${index + 1}
-    </div>
-    
-    <div class="section">
-      <div class="section-title">🏢 BRANCH INFORMATION</div>
-      <div class="info-row">
-        <div class="info-label">Branch Name:</div>
-        <div class="info-value">${checklist.basicInfo.branch}</div>
-      </div>
-      <div class="info-row">
-        <div class="info-label">Inspection Date:</div>
-        <div class="info-value">${new Date(checklist.timestamp).toLocaleString()}</div>
-      </div>
-      <div class="info-row">
-        <div class="info-label">Shift:</div>
-        <div class="info-value">Shift ${checklist.basicInfo.shift}</div>
-      </div>
-      <div class="info-row">
-        <div class="info-label">Inspected By:</div>
-        <div class="info-value">${checklist.basicInfo.managerType || 'N/A'}</div>
-      </div>
-    </div>
-    
-    <div class="section">
-      <div class="section-title">👤 EMPLOYEE INFORMATION</div>
-      <div class="info-row">
-        <div class="info-label">Name:</div>
-        <div class="info-value">${checklist.basicInfo.employeeName}</div>
-      </div>
-      <div class="info-row">
-        <div class="info-label">Employee ID:</div>
-        <div class="info-value">${checklist.basicInfo.employeeId}</div>
-      </div>
-      <div class="info-row">
-        <div class="info-label">Employee Type:</div>
-        <div class="info-value">${checklist.basicInfo.employeeType.toUpperCase()}</div>
-      </div>
-    </div>
-    
-    <div class="score-box ${scoreClass}">
-      📈 OVERALL SCORE: ${score.toFixed(1)}%<br>
-      <div style="font-size: 18px; margin-top: 5px;">${scoreStatus}</div>
-      <div style="font-size: 14px; margin-top: 10px;">
-        ✅ Passed: ${passedItems} | ❌ Failed: ${failedItems.length}
-      </div>
-    </div>
-`;
-
-        if (failedItems.length > 0) {
-          htmlContent += `
-    <div class="failed-items">
-      <div class="section-title">⚠️ FAILED ITEMS (${failedItems.length})</div>
-`;
-          failedItems.forEach((item, idx) => {
-            htmlContent += `
-      <div class="failed-item">
-        <strong>${idx + 1}. ${item.name}</strong><br>
-        <em>Category: ${item.section.replace(/([A-Z])/g, ' $1').trim()}</em>
-        ${item.remarks ? `<br><strong>Remarks:</strong> ${item.remarks}` : ''}
-      </div>
-`;
-          });
-          htmlContent += `
-    </div>
-`;
-        } else {
-          htmlContent += `
-    <div style="background: #d4edda; padding: 15px; border-radius: 8px; text-align: center; color: #155724;">
-      <strong>✅ ALL ITEMS PASSED!</strong><br>
-      Excellent performance!
-    </div>
-`;
-        }
-
-        htmlContent += `
-    <div class="signature-section">
-      <strong>Manager/Supervisor Signature:</strong>
-      <div class="signature-line"></div>
-      <div style="margin-top: 10px;">Date: _________________</div>
-    </div>
-  </div>
+  <tr>
+    <td>${b.branch}</td>
+    <td>${b.totalInspections}</td>
+    <td>${b.rider.avgScore}%</td>
+    <td>${b.crew.avgScore}%</td>
+    <td>${b.manager.avgScore}%</td>
+    <td>${b.overallAvg}%</td>
+  </tr>
 `;
       });
 
       htmlContent += `
-  <div class="footer">
-    <strong>END OF REPORT</strong><br>
-    © ${new Date().getFullYear()} Johnny & Jugnu - All Rights Reserved
-  </div>
-</body>
-</html>`;
+  </tbody>
+</table>
+`;
 
-      // Create blob and download
-      const blob = new Blob([htmlContent], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const printWindow = window.open(url, '_blank');
-      
-      if (printWindow) {
-        printWindow.onload = () => {
-          setTimeout(() => {
-            printWindow.print();
-          }, 250);
-        };
-      } else {
-        // Fallback: direct download as HTML
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `JJ_Hygiene_Report_${new Date().toISOString().split('T')[0]}.html`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
-    } catch (error) {
-      console.error('PDF Download Error:', error);
-      alert('Error downloading report. Please try again.');
+      // Individual checklists
+      htmlContent += `
+<h2 class="section-title">Individual Inspections</h2>
+`;
+
+      checklists.forEach((c, idx) => {
+        const basic = c.basicInfo || {};
+        const score = Database.calculateChecklistScore(c).toFixed(1);
+
+        htmlContent += `
+<div class="report-card">
+  <div><strong>#${idx + 1} – ${basic.employeeName || 'Unknown'} (${basic.employeeType || ''})</strong></div>
+  <div>Branch: ${basic.branch || ''}</div>
+  <div>Date: ${basic.date || ''}</div>
+  <div>Shift: ${basic.shift || ''}</div>
+  <div>Manager: ${basic.managerType || ''}</div>
+  <div>Score: <strong>${score}%</strong></div>
+</div>
+`;
+      });
+
+      htmlContent += `
+</body>
+</html>
+`;
+
+      const win = window.open('', '_blank');
+      if (!win) return;
+      win.document.open();
+      win.document.write(htmlContent);
+      win.document.close();
+      win.focus();
+      // User can then "Print" → Save as PDF
+      win.print();
+    } catch (err) {
+      console.error('PDF generation failed', err);
+      alert('Could not generate the PDF. Check console for details.');
     }
   };
+
 
   const downloadExcel = () => {
     try {
@@ -3461,13 +3395,13 @@ const Reports = ({ onNavigate, user, darkMode }) => {
             </h2>
             <div className="flex gap-2">
               <button
-                onClick={downloadPDF}
-                className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all transform hover:scale-105"
-                title="Download detailed PDF report"
-              >
-                <Download size={16} />
-                📄 PDF Report
-              </button>
+  onClick={downloadPDF}
+  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-semibold hover:from-blue-600 hover:to-purple-600 shadow-lg"
+>
+  <Download size={16} />
+  Download / Print
+</button>
+
               <button
                 onClick={downloadExcel}
                 className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all transform hover:scale-105"
@@ -3890,189 +3824,128 @@ const Reports = ({ onNavigate, user, darkMode }) => {
 };
 
 const App = () => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [screen, setScreen] = useState('login'); // 'login' | 'dashboard' | 'checklist' | 'config' | 'reports'
-  const [darkMode, setDarkMode] = useState(() => {
-    try {
-      return localStorage.getItem('jj-hygiene-dark') === 'true';
-    } catch {
-      return false;
-    }
-  });
-  const [syncing, setSyncing] = useState(true);
+  const [user, setUser] = useState(null);
+  const [view, setView] = useState('dashboard'); // 'dashboard' | 'checklist' | 'config' | 'reports'
+  const [stats, setStats] = useState(Database.getStats(null));
+  const [darkMode, setDarkMode] = useState(false);
+  const [initialising, setInitialising] = useState(true);
 
-  // Keep Database.darkMode in sync + persist preference
+  // Load existing data from Supabase once
   useEffect(() => {
-    Database.darkMode = darkMode;
-    try {
-      localStorage.setItem('jj-hygiene-dark', darkMode ? 'true' : 'false');
-    } catch {
-      // ignore
-    }
-  }, [darkMode]);
-
-  // Initial Supabase → in-memory sync
-  useEffect(() => {
-    const syncData = async () => {
+    const loadInitial = async () => {
       try {
-        // Make sure branch configs exist
-        Database.initBranchConfig();
-
-        // 1) Load checklists
-        const { data: checklistRows, error: checklistError } = await supabase
-          .from('checklists')
-          .select('data')
-          .order('created_at', { ascending: true });
-
-        if (checklistError) {
-          console.error('Error loading checklists from Supabase', checklistError);
-        } else if (checklistRows) {
-          Database.checklists = checklistRows.map((row) => row.data);
-        }
-
-        // 2) Load staff config
-        const { data: staffRows, error: staffError } = await supabase
-          .from('staff_config')
-          .select('branch, staff_type, config');
-
-        if (staffError) {
-          console.error('Error loading staff config from Supabase', staffError);
-        } else if (staffRows) {
-          staffRows.forEach(({ branch, staff_type, config }) => {
-            if (!Database.branchStaffConfig[branch]) {
-              Database.branchStaffConfig[branch] = {
-                rider: {
-                  total: 0,
-                  shiftA: { count: 0, dayOff: 0, noShow: 0, medical: 0 },
-                  shiftB: { count: 0, dayOff: 0, noShow: 0, medical: 0 },
-                },
-                crew: {
-                  total: 0,
-                  shiftA: { count: 0, dayOff: 0, noShow: 0, medical: 0 },
-                  shiftB: { count: 0, dayOff: 0, noShow: 0, medical: 0 },
-                },
-                manager: {
-                  total: 0,
-                  shiftA: { count: 0, dayOff: 0, noShow: 0, medical: 0 },
-                  shiftB: { count: 0, dayOff: 0, noShow: 0, medical: 0 },
-                },
-              };
-            }
-            Database.branchStaffConfig[branch][staff_type] = config;
-          });
-        }
-
-        // 3) Load user progress (points/levels/streaks)
-        const { data: progressRows, error: progressError } = await supabase
-          .from('user_progress')
-          .select('*');
-
-        if (progressError) {
-          console.error('Error loading user_progress from Supabase', progressError);
-        } else if (progressRows) {
-          progressRows.forEach((row) => {
-            const key = row.username.toLowerCase();
-            if (Database.users[key]) {
-              const u = Database.users[key];
-              u.points = row.points ?? u.points;
-              u.level = row.level ?? u.level;
-              u.streak = row.streak ?? u.streak;
-              u.lastCheckDate = row.last_check_date ?? u.lastCheckDate;
-            }
-          });
-        }
+        await Database.syncFromSupabase();
       } catch (e) {
-        console.error('Error syncing with Supabase', e);
+        console.error('Initial sync failed', e);
       } finally {
-        setSyncing(false);
+        const branchFilter =
+          user && user.role !== 'admin' ? user.branch : null;
+        setStats(Database.getStats(branchFilter));
+        setInitialising(false);
       }
     };
 
-    syncData();
+    loadInitial();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleToggleDarkMode = () => setDarkMode((prev) => !prev);
+  // Recalculate stats whenever user changes (e.g., login / branch)
+  useEffect(() => {
+    if (!user) return;
+    const branchFilter = user.role === 'admin' ? null : user.branch;
+    setStats(Database.getStats(branchFilter));
+  }, [user]);
 
-  const handleLogin = (user) => {
-    setCurrentUser(user);
-    setScreen('dashboard');
-  };
+  const toggleDarkMode = () => setDarkMode((d) => !d);
 
   const handleLogout = () => {
-    setCurrentUser(null);
-    setScreen('login');
+    setUser(null);
+    setView('dashboard');
   };
 
-  const handleNavigate = (target) => setScreen(target);
+  const handleChecklistSubmitted = () => {
+    if (!user) return;
+    const branchFilter = user.role === 'admin' ? null : user.branch;
+    setStats(Database.getStats(branchFilter));
+    setView('dashboard');
+  };
 
-  // Not logged in → show login screen only
-  if (!currentUser) {
+  // Initial loading screen while pulling from Supabase
+  if (initialising) {
+    return (
+      <div
+        className={`min-h-screen flex items-center justify-center ${
+          darkMode ? 'bg-gray-900' : 'bg-gray-50'
+        }`}
+      >
+        <AnimatedBackground darkMode={darkMode} />
+        <div className="relative z-10 text-center">
+          <div className="text-5xl mb-4">✨</div>
+          <p className={darkMode ? 'text-white' : 'text-gray-800'}>
+            Loading hygiene system…
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // If no user → show login
+  if (!user) {
     return (
       <LoginScreen
-        onLogin={handleLogin}
+        onLogin={(u) => {
+          setUser(u);
+          const branchFilter = u.role === 'admin' ? null : u.branch;
+          setStats(Database.getStats(branchFilter));
+        }}
         darkMode={darkMode}
-        toggleDarkMode={handleToggleDarkMode}
+        toggleDarkMode={toggleDarkMode}
       />
     );
   }
 
-  const branchForStats =
-    currentUser.role === 'admin' ? null : currentUser.branch;
-  const stats = Database.getStats(branchForStats);
-
-  let content = null;
-  if (screen === 'dashboard') {
-    content = (
-      <Dashboard
-        onNavigate={handleNavigate}
-        stats={stats}
-        user={currentUser}
-        onLogout={handleLogout}
-        darkMode={darkMode}
-        toggleDarkMode={handleToggleDarkMode}
-      />
-    );
-  } else if (screen === 'checklist') {
-    content = (
+  // Route based on `view`
+  if (view === 'checklist') {
+    return (
       <ChecklistForm
-        onNavigate={handleNavigate}
-        onSubmit={() => setScreen('dashboard')}
-        user={currentUser}
-        darkMode={darkMode}
-      />
-    );
-  } else if (screen === 'config') {
-    content = (
-      <StaffConfig
-        onNavigate={handleNavigate}
-        user={currentUser}
-        darkMode={darkMode}
-      />
-    );
-  } else if (screen === 'reports') {
-    content = (
-      <Reports
-        onNavigate={handleNavigate}
-        user={currentUser}
+        onNavigate={setView}
+        onSubmit={handleChecklistSubmitted}
+        user={user}
         darkMode={darkMode}
       />
     );
   }
 
+  if (view === 'config') {
+    return (
+      <StaffConfig
+        onNavigate={setView}
+        user={user}
+        darkMode={darkMode}
+      />
+    );
+  }
+
+  if (view === 'reports') {
+    return (
+      <Reports
+        onNavigate={setView}
+        user={user}
+        darkMode={darkMode}
+      />
+    );
+  }
+
+  // Default: dashboard
   return (
-    <div className={darkMode ? 'dark' : ''}>
-      {syncing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="px-4 py-3 rounded-2xl bg-white/90 dark:bg-gray-800/90 shadow-lg flex items-center gap-3">
-            <span className="inline-block h-5 w-5 rounded-full border-2 border-orange-500 border-t-transparent animate-spin" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-              Syncing with Supabase...
-            </span>
-          </div>
-        </div>
-      )}
-      {content}
-    </div>
+    <Dashboard
+      onNavigate={setView}
+      stats={stats}
+      user={user}
+      onLogout={handleLogout}
+      darkMode={darkMode}
+      toggleDarkMode={toggleDarkMode}
+    />
   );
 };
 
