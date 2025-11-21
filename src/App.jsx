@@ -9,7 +9,7 @@ import {
 import { supabase } from './supabaseClient';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { Download, FileText } from 'lucide-react'; // make sure FileText is included
+import { FileText } from 'lucide-react'; // make sure FileText is included
 
 
 const Database = {
