@@ -3283,73 +3283,246 @@ const Reports = ({ onNavigate, user, darkMode }) => {
     URL.revokeObjectURL(url);
   };
 
-  const handleDownloadPdf = () => {
-    if (checklists.length === 0) {
-      alert('No inspections found for the selected filters.');
-      return;
+ const handleDownloadPdf = () => {
+  if (checklists.length === 0) {
+    alert('No inspections found for the selected filters.');
+    return;
+  }
+
+  try {
+    let htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Johnny & Jugnu - Hygiene Inspection Reports</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: white;
+      color: black;
     }
+    .header {
+      text-align: center;
+      border: 3px solid #333;
+      padding: 20px;
+      margin-bottom: 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: bold;
+    }
+    .header h2 {
+      margin: 10px 0 0 0;
+      font-size: 18px;
+      font-weight: normal;
+    }
+    .meta-info {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .report-card {
+      border: 2px solid #333;
+      padding: 20px;
+      margin-bottom: 30px;
+      page-break-inside: avoid;
+      background: white;
+    }
+    .report-header {
+      background: #333;
+      color: white;
+      padding: 10px;
+      margin: -20px -20px 20px -20px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .section-title {
+      font-weight: bold;
+      color: #333;
+      font-size: 16px;
+      margin: 15px 0 8px 0;
+      border-bottom: 2px solid #333;
+      padding-bottom: 5px;
+    }
+    .info-row {
+      margin: 6px 0;
+      display: flex;
+    }
+    .info-label {
+      font-weight: bold;
+      width: 180px;
+      color: #555;
+    }
+    .info-value {
+      flex: 1;
+      color: #000;
+    }
+    .score-box {
+      text-align: center;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 8px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .score-excellent {
+      background: #d4edda;
+      color: #155724;
+      border: 2px solid #28a745;
+    }
+    .score-good {
+      background: #fff3cd;
+      color: #856404;
+      border: 2px solid #ffc107;
+    }
+    .score-poor {
+      background: #f8d7da;
+      color: #721c24;
+      border: 2px solid #dc3545;
+    }
+    .failed-items {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    .failed-item {
+      margin: 8px 0;
+      padding: 8px;
+      background: white;
+      border-left: 4px solid #dc3545;
+    }
+    .signature-section {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 2px solid #333;
+    }
+    .signature-line {
+      margin-top: 40px;
+      border-bottom: 2px solid #000;
+      width: 300px;
+      display: inline-block;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      padding: 20px;
+      border-top: 3px solid #333;
+      color: #666;
+      font-size: 12px;
+    }
+    @media print {
+      .report-card { page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
 
-    const doc = new jsPDF('p', 'mm', 'a4');
+  <div class="header">
+    <h1>✨ JOHNNY & JUGNU ✨</h1>
+    <h2>HYGIENE INSPECTION REPORTS</h2>
+  </div>
 
-    const branchText = filters.branch || 'All Branches';
-    const typeText = filters.employeeType || 'All Types';
-    const dateText = `${filters.startDate || 'Start'} → ${filters.endDate || 'End'}`;
+  <div class="meta-info">
+    <strong>📅 Generated:</strong> ${new Date().toLocaleString()}<br>
+    <strong>📊 Total Reports:</strong> ${checklists.length}<br>
+    <strong>🔍 Filters:</strong>
+      ${filters.branch || 'All Branches'} |
+      ${filters.startDate || 'Start'} → ${filters.endDate || 'End'} |
+      ${filters.employeeType || 'All Types'}
+  </div>
+`;
 
-    const branchSlug = (filters.branch || 'all').replace(/\s+/g, '_');
-    const startSlug = filters.startDate || 'start';
-    const endSlug = filters.endDate || 'end';
+    // Loop all checklists
+    checklists.forEach((c, index) => {
+      const score = Database.calculateChecklistScore(c);
+      const failed = Database.getChecklistSummary(c);
 
-    // Header
-    doc.setFontSize(16);
-    doc.text('Hygiene Inspection Report', 14, 18);
+      const scoreClass =
+        score >= 90 ? 'score-excellent' :
+        score >= 70 ? 'score-good' :
+        'score-poor';
 
-    doc.setFontSize(10);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 26);
-    doc.text(`Branch: ${branchText}`, 14, 32);
-    doc.text(`Employee Type: ${typeText}`, 14, 38);
-    doc.text(`Date Range: ${dateText}`, 14, 44);
-    doc.text(
-      `Total Inspections: ${totalInspections} | Avg Score: ${avgScore}% | Total Fails: ${totalFailedItems}`,
-      14,
-      50
-    );
+      htmlContent += `
+      <div class="report-card">
+        <div class="report-header">Report #${index + 1}</div>
 
-    // Table data
-    const tableBody = checklists.map(c => {
-      const score = Database.calculateChecklistScore(c).toFixed(1);
-      const failedCount = Database.getChecklistSummary(c).length;
+        <div class="section">
+          <div class="section-title">Employee Details</div>
+          <div class="info-row"><div class="info-label">Name:</div><div class="info-value">${c.basicInfo.employeeName}</div></div>
+          <div class="info-row"><div class="info-label">Employee ID:</div><div class="info-value">${c.basicInfo.employeeId || '-'}</div></div>
+          <div class="info-row"><div class="info-label">Employee Type:</div><div class="info-value">${c.basicInfo.employeeType}</div></div>
+          <div class="info-row"><div class="info-label">Branch:</div><div class="info-value">${c.basicInfo.branch}</div></div>
+        </div>
 
-      return [
-        c.basicInfo.branch || '',
-        c.basicInfo.date || '',
-        c.basicInfo.shift || '',
-        c.basicInfo.employeeName || '',
-        c.basicInfo.employeeType || '',
-        c.basicInfo.managerType || '',
-        `${score}%`,
-        String(failedCount)
-      ];
+        <div class="section">
+          <div class="section-title">Inspection Details</div>
+          <div class="info-row"><div class="info-label">Date:</div><div class="info-value">${c.basicInfo.date}</div></div>
+          <div class="info-row"><div class="info-label">Shift:</div><div class="info-value">${c.basicInfo.shift}</div></div>
+          <div class="info-row"><div class="info-label">Manager:</div><div class="info-value">${c.basicInfo.managerType}</div></div>
+        </div>
+
+        <div class="score-box ${scoreClass}">
+          Score: ${score}%
+        </div>
+
+        ${
+          failed.length > 0
+            ? `
+              <div class="failed-items">
+                <strong>⚠️ Failed Items (${failed.length})</strong>
+                ${failed.map(f => `
+                  <div class="failed-item">
+                    <strong>${f.section}</strong> – ${f.name}
+                    ${f.remarks ? `<div><em>${f.remarks}</em></div>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            `
+            : `<div class="score-box score-excellent">All items passed ✔️</div>`
+        }
+
+        <div class="signature-section">
+          <div class="signature-line"></div>
+          <div>Manager Signature</div>
+        </div>
+      </div>
+      `;
     });
 
-    doc.autoTable({
-      startY: 56,
-      head: [[
-        'Branch',
-        'Date',
-        'Shift',
-        'Employee',
-        'Type',
-        'Manager',
-        'Score',
-        'Fails'
-      ]],
-      body: tableBody,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [41, 128, 185] }
-    });
+    htmlContent += `
+      <div class="footer">
+        Johnny & Jugnu © ${new Date().getFullYear()}
+      </div>
 
-    doc.save(`hygiene_report_${branchSlug}_${startSlug}_${endSlug}.pdf`);
-  };
+</body>
+</html>
+`;
+
+    // OPEN POPUP + PRINT (User saves as PDF)
+    const win = window.open('', '_blank');
+    win.document.open();
+    win.document.write(htmlContent);
+    win.document.close();
+    win.focus();
+
+    setTimeout(() => win.print(), 400);
+
+  } catch (err) {
+    console.error(err);
+    alert('Could not generate the PDF. Check console for details.');
+  }
+};
+
 
   return (
     <div
