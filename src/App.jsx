@@ -2943,1163 +2943,545 @@ const StaffConfigModal = ({ branch, type, onClose, onSave, darkMode }) => {
   );
 };
 
+// ==========================
+// StaffConfig Screen
+// ==========================
 const StaffConfig = ({ onNavigate, user, darkMode }) => {
-  const userBranch = user.role === 'admin' ? Database.branches[0] : user.branch;
-  const [selectedBranch, setSelectedBranch] = useState(userBranch);
-  const [showModal, setShowModal] = useState(null);
+  const initialBranch = user.role === 'admin' ? Database.branches[0] : user.branch;
+  const [selectedBranch, setSelectedBranch] = useState(initialBranch);
+  const [modalType, setModalType] = useState(null); // 'rider' | 'crew' | 'manager'
+
+  const types = [
+    { key: 'rider', label: 'Riders', icon: '🏍️', color: 'blue' },
+    { key: 'crew', label: 'Crew', icon: '👨‍🍳', color: 'green' },
+    { key: 'manager', label: 'Managers', icon: '👔', color: 'purple' },
+  ];
+
+  const openModal = (type) => setModalType(type);
+  const closeModal = () => setModalType(null);
+
+  const renderTypeCard = (type) => {
+    const config = Database.getStaffConfig(selectedBranch, type.key);
+    const a = config.shiftA;
+    const b = config.shiftB;
+
+    const working = a.count + b.count;
+    const dayOff = a.dayOff + b.dayOff;
+    const noShow = a.noShow + b.noShow;
+    const medical = a.medical + b.medical;
+    const planned = working + dayOff + noShow + medical;
+    const utilization = config.total > 0 ? (working / config.total) * 100 : 0;
+
+    return (
+      <div
+        key={type.key}
+        className={`rounded-2xl p-5 border-2 shadow-lg transition-all hover:shadow-2xl hover:-translate-y-1 ${
+          darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+        }`}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl ${
+                darkMode
+                  ? 'bg-gradient-to-br from-blue-600 to-purple-600'
+                  : 'bg-gradient-to-br from-blue-400 to-purple-400'
+              }`}
+            >
+              {type.icon}
+            </div>
+            <div>
+              <p className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                {type.label}
+              </p>
+              <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                Total: <span className="font-semibold">{config.total}</span> staff
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => openModal(type.key)}
+            className="px-3 py-1.5 text-xs rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600 shadow-md"
+          >
+            ✏️ Configure
+          </button>
+        </div>
+
+        <div className="mb-3">
+          <div className="flex justify-between text-xs mb-1">
+            <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Utilisation</span>
+            <span
+              className={`font-semibold ${
+                utilization >= 90
+                  ? 'text-green-500'
+                  : utilization >= 70
+                  ? 'text-yellow-500'
+                  : 'text-red-500'
+              }`}
+            >
+              {utilization.toFixed(0)}%
+            </span>
+          </div>
+          <div className={darkMode ? 'bg-gray-700 h-2.5 rounded-full' : 'bg-gray-200 h-2.5 rounded-full'}>
+            <div
+              className="h-2.5 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 transition-all"
+              style={{ width: `${Math.min(utilization, 100)}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 text-xs mt-4">
+          <div
+            className={`rounded-xl p-3 ${
+              darkMode ? 'bg-green-900/30 border border-green-700' : 'bg-green-50 border border-green-200'
+            }`}
+          >
+            <p className={darkMode ? 'text-green-200' : 'text-green-700'}>Working</p>
+            <p className={`text-2xl font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{working}</p>
+          </div>
+          <div
+            className={`rounded-xl p-3 ${
+              darkMode ? 'bg-yellow-900/30 border border-yellow-700' : 'bg-yellow-50 border border-yellow-200'
+            }`}
+          >
+            <p className={darkMode ? 'text-yellow-200' : 'text-yellow-700'}>Day Off</p>
+            <p className={`text-2xl font-bold ${darkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>{dayOff}</p>
+          </div>
+          <div
+            className={`rounded-xl p-3 ${
+              darkMode ? 'bg-red-900/30 border border-red-700' : 'bg-red-50 border border-red-200'
+            }`}
+          >
+            <p className={darkMode ? 'text-red-200' : 'text-red-700'}>No Show</p>
+            <p className={`text-2xl font-bold ${darkMode ? 'text-red-400' : 'text-red-600'}`}>{noShow}</p>
+          </div>
+          <div
+            className={`rounded-xl p-3 ${
+              darkMode ? 'bg-orange-900/30 border border-orange-700' : 'bg-orange-50 border border-orange-200'
+            }`}
+          >
+            <p className={darkMode ? 'text-orange-200' : 'text-orange-700'}>Medical</p>
+            <p className={`text-2xl font-bold ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>{medical}</p>
+          </div>
+        </div>
+
+        <p className={`text-[11px] mt-3 ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+          Planned (A + B): <span className="font-semibold">{planned}</span>
+        </p>
+      </div>
+    );
+  };
 
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'} p-4`}>
       <AnimatedBackground darkMode={darkMode} />
-      
       <div className="max-w-6xl mx-auto relative z-10">
-        <button onClick={() => onNavigate('dashboard')} className="mb-4 text-blue-500 hover:text-blue-700 flex items-center gap-2 font-medium">
+        <button
+          onClick={() => onNavigate('dashboard')}
+          className="mb-5 text-blue-500 hover:text-blue-700 flex items-center gap-2 font-medium"
+        >
           ← Back to Dashboard
         </button>
-        
-        {showModal && (
-          <StaffConfigModal
-            branch={showModal.branch}
-            type={showModal.type}
-            onClose={() => setShowModal(null)}
-            onSave={() => setSelectedBranch(selectedBranch)}
-            darkMode={darkMode}
-          />
-        )}
-        
-        <div className={`${darkMode ? 'bg-gray-800/90' : 'bg-white'} backdrop-blur-xl rounded-2xl shadow-lg p-6`}>
-          <h2 className={`text-2xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            ⚙️ Staff Configuration
-          </h2>
-          
-          {user.role === 'admin' && (
-            <div className="mb-6">
-              <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Select Branch
-              </label>
-              <select
-                value={selectedBranch}
-                onChange={(e) => setSelectedBranch(e.target.value)}
-                className={`w-full p-3 border rounded-xl ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-              >
-                {Database.branches.map(b => <option key={b} value={b}>{b}</option>)}
-              </select>
-            </div>
-          )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {['rider', 'crew', 'manager'].map(type => {
-              const config = Database.getStaffConfig(selectedBranch, type);
-              return (
-                <div key={type} className={`border rounded-xl p-6 ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'} transition-all hover:shadow-lg`}>
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className={`text-xl font-bold capitalize ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {type}s
-                    </h3>
-                    <button
-                      onClick={() => setShowModal({ branch: selectedBranch, type })}
-                      className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-3 text-sm">
-                    <div className={`flex justify-between font-bold text-base border-b pb-2 ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>Total:</span>
-                      <span className="text-blue-600">{config.total}</span>
-                    </div>
-                    
-                    <div className={`${darkMode ? 'bg-blue-900/30' : 'bg-blue-50'} p-3 rounded-lg`}>
-                      <div className="font-bold text-blue-900 dark:text-blue-200 mb-2">Shift A</div>
-                      <div className="space-y-1 text-xs">
-                        <div className="flex justify-between">
-                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Working:</span>
-                          <span className="font-bold text-green-600">{config.shiftA.count}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Day Off:</span>
-                          <span>{config.shiftA.dayOff}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>No Show:</span>
-                          <span className="text-red-600">{config.shiftA.noShow}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Medical:</span>
-                          <span className="text-orange-600">{config.shiftA.medical}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className={`${darkMode ? 'bg-purple-900/30' : 'bg-purple-50'} p-3 rounded-lg`}>
-                      <div className="font-bold text-purple-900 dark:text-purple-200 mb-2">Shift B</div>
-                      <div className="space-y-1 text-xs">
-                        <div className="flex justify-between">
-                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Working:</span>
-                          <span className="font-bold text-green-600">{config.shiftB.count}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Day Off:</span>
-                          <span>{config.shiftB.dayOff}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>No Show:</span>
-                          <span className="text-red-600">{config.shiftB.noShow}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Medical:</span>
-                          <span className="text-orange-600">{config.shiftB.medical}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+        <div
+          className={`mb-6 rounded-3xl border-2 shadow-2xl overflow-hidden ${
+            darkMode
+              ? 'bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800 border-gray-700'
+              : 'bg-gradient-to-br from-white via-blue-50 to-purple-50 border-gray-200'
+          }`}
+        >
+          <div
+            className={`p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 ${
+              darkMode
+                ? 'bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600'
+                : 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl">
+                📊
+              </div>
+              <div>
+                <h1 className="text-2xl font-black text-white">Staff Planning & Attendance</h1>
+                <p className="text-white/80 text-sm">
+                  Configure rider, crew and manager counts by branch and shift.
+                </p>
+              </div>
+            </div>
+
+            {user.role === 'admin' ? (
+              <div className="flex flex-col gap-2">
+                <label className="text-xs text-white/90 font-semibold">Branch</label>
+                <select
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold bg-white/10 text-white border border-white/40 focus:outline-none focus:ring-2 focus:ring-white/60"
+                >
+                  {Database.branches.map((b) => (
+                    <option key={b} value={b} className="text-black">
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className="flex flex-col items-start">
+                <span className="text-xs text-white/90 font-semibold">Branch</span>
+                <div className="mt-1 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/15 text-white text-sm font-semibold">
+                  🏢 {user.branch}
                 </div>
-              );
-            })}
+              </div>
+            )}
+          </div>
+
+          <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
+            {types.map((t) => renderTypeCard(t))}
           </div>
         </div>
       </div>
+
+      {modalType && (
+        <StaffConfigModal
+          branch={selectedBranch}
+          type={modalType}
+          darkMode={darkMode}
+          onClose={closeModal}
+          onSave={() => {}}
+        />
+      )}
     </div>
   );
 };
 
+// ==========================
+// Reports Screen
+// ==========================
 const Reports = ({ onNavigate, user, darkMode }) => {
-  const userBranch = user.role === 'admin' ? '' : user.branch;
-  const [filters, setFilters] = useState({ branch: userBranch, date: '', employeeType: '' });
-  const [expandedId, setExpandedId] = useState(null);
+  const initialBranch = user.role === 'admin' ? '' : user.branch;
+  const [branch, setBranch] = useState(initialBranch);
+  const [date, setDate] = useState('');
+  const [employeeType, setEmployeeType] = useState('');
+  const [checklists, setChecklists] = useState(() =>
+    Database.getChecklists({
+      branch: initialBranch || null,
+      date: null,
+      employeeType: null,
+    })
+  );
 
-  // Date range for PDF / reporting
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  useEffect(() => {
+    setChecklists(
+      Database.getChecklists({
+        branch: branch || null,
+        date: date || null,
+        employeeType: employeeType || null,
+      })
+    );
+  }, [branch, date, employeeType]);
 
-  const checklists = Database.getChecklists(filters);
-
-  // Calculate branch overview statistics
-  const getBranchOverview = (sourceChecklists = Database.checklists) => {
-    const branches = user.role === 'admin' ? Database.branches : [user.branch];
-    const overview = branches.map(branch => {
-      const branchChecklists = sourceChecklists.filter(c => c.basicInfo.branch === branch);
-      
-      const riderChecklists = branchChecklists.filter(c => c.basicInfo.employeeType === 'rider');
-      const crewChecklists = branchChecklists.filter(c => c.basicInfo.employeeType === 'crew');
-      const managerChecklists = branchChecklists.filter(c => c.basicInfo.employeeType === 'manager');
-      
-      const calculateAvgScore = (list) => {
-        if (list.length === 0) return 0;
-        const scores = list.map(c => Database.calculateChecklistScore(c));
-        return (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
-      };
-      
-      return {
-        branch,
-        totalInspections: branchChecklists.length,
-        rider: {
-          count: riderChecklists.length,
-          avgScore: calculateAvgScore(riderChecklists)
-        },
-        crew: {
-          count: crewChecklists.length,
-          avgScore: calculateAvgScore(crewChecklists)
-        },
-        manager: {
-          count: managerChecklists.length,
-          avgScore: calculateAvgScore(managerChecklists)
-        },
-        overallAvg: Database.calculateAvgScore(branchChecklists)
-      };
-    });
-    
-    return overview;
-  };
-
-  const branchOverview = getBranchOverview();
-
-  const downloadPDF = () => {
-    try {
-      const now = new Date().toLocaleString();
-
-      // 1) Build the base set for PDF: respect branch + employee filters
-      const baseFiltered = Database.checklists.filter((c) => {
-        const branchMatch = !filters.branch || c.basicInfo.branch === filters.branch;
-        const typeMatch = !filters.employeeType || c.basicInfo.employeeType === filters.employeeType;
-        return branchMatch && typeMatch;
-      });
-
-      // 2) Apply date range (if given) or single date (filters.date)
-      let pdfChecklists = baseFiltered;
-
-      if (startDate || endDate || filters.date) {
-        pdfChecklists = baseFiltered.filter((c) => {
-          const rawDate = c.timestamp || (c.basicInfo && c.basicInfo.date);
-          if (!rawDate) return false;
-
-          const d = new Date(rawDate);
-          if (Number.isNaN(d.getTime())) return false;
-
-          const iso = d.toISOString().slice(0, 10); // YYYY-MM-DD
-
-          // If range is set, it takes priority
-          if (startDate || endDate) {
-            const afterStart = !startDate || iso >= startDate;
-            const beforeEnd = !endDate || iso <= endDate;
-            return afterStart && beforeEnd;
-          }
-
-          // Otherwise fall back to single-date filter (exact match)
-          if (filters.date) {
-            return iso === filters.date;
-          }
-
-          return true;
-        });
-      }
-
-      if (!pdfChecklists.length) {
-        alert('No inspections found for the selected filters / date range.');
-        return;
-      }
-
-      // 3) Branch overview for this filtered set
-      const pdfBranchOverview = getBranchOverview(pdfChecklists);
-
-      // 4) Human-readable label for the date range
-      let rangeLabel = 'All dates';
-      if (startDate && endDate) rangeLabel = `${startDate} to ${endDate}`;
-      else if (startDate) rangeLabel = `From ${startDate}`;
-      else if (endDate) rangeLabel = `Until ${endDate}`;
-      else if (filters.date) rangeLabel = filters.date;
-
-      let htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <title>Johnny & Jugnu - Hygiene Inspection Reports</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background: #ffffff;
-      color: #000000;
-    }
-    .header {
-      text-align: center;
-      border: 3px solid #333;
-      padding: 20px;
-      margin-bottom: 30px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-    }
-    .header h1 {
-      margin: 0;
-      font-size: 28px;
-    }
-    .header h2 {
-      margin: 10px 0 0 0;
-      font-size: 18px;
-      font-weight: normal;
-    }
-    .meta {
-      margin-top: 10px;
-      font-size: 13px;
-    }
-    .section-title {
-      font-size: 18px;
-      font-weight: bold;
-      margin: 20px 0 10px 0;
-      border-bottom: 2px solid #333;
-      padding-bottom: 5px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 25px;
-      font-size: 13px;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 6px 8px;
-      text-align: left;
-    }
-    th {
-      background: #f0f0f0;
-    }
-    .report-card {
-      border: 2px solid #333;
-      padding: 15px;
-      margin-bottom: 25px;
-      page-break-inside: avoid;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>Johnny & Jugnu</h1>
-    <h2>Hygiene Inspection Reports</h2>
-    <div class="meta">Generated: ${now}</div>
-    <div class="meta">Date Range: ${rangeLabel}</div>
-  </div>
-`;
-
-      // Branch overview (for the filtered data set only)
-      htmlContent += `
-<h2 class="section-title">Branch Overview</h2>
-<table>
-  <thead>
-    <tr>
-      <th>Branch</th>
-      <th>Total Inspections</th>
-      <th>Rider Avg</th>
-      <th>Crew Avg</th>
-      <th>Manager Avg</th>
-      <th>Overall Avg</th>
-    </tr>
-  </thead>
-  <tbody>
-`;
-
-      pdfBranchOverview.forEach((b) => {
-        htmlContent += `
-  <tr>
-    <td>${b.branch}</td>
-    <td>${b.totalInspections}</td>
-    <td>${b.rider.avgScore}%</td>
-    <td>${b.crew.avgScore}%</td>
-    <td>${b.manager.avgScore}%</td>
-    <td>${b.overallAvg}%</td>
-  </tr>
-`;
-      });
-
-      htmlContent += `
-  </tbody>
-</table>
-`;
-
-      // Helper: which sections to dump items from
-      const sections = [
-        { key: 'safetyChecks', label: 'Safety Checks' },
-        { key: 'documents', label: 'Documents' },
-        { key: 'bikeInspection', label: 'Bike Inspection' },
-        { key: 'lights', label: 'Lights' },
-        { key: 'hygiene', label: 'Hygiene' }
-      ];
-
-      // Individual checklists with ALL steps / items
-      htmlContent += `
-<h2 class="section-title">Individual Inspections (All Steps)</h2>
-`;
-
-      pdfChecklists.forEach((c, idx) => {
-        const basic = c.basicInfo || {};
-        const score = Database.calculateChecklistScore(c).toFixed(1);
-
-        // Flatten all items with section info
-        const allItems = [];
-
-        sections.forEach((section) => {
-          const list = c[section.key];
-          if (!Array.isArray(list)) return;
-
-          list.forEach((item) => {
-            // Apply same conditional skip logic as Excel export
-            if (item.name === 'Society Gate Passes' && !item.hasGatePass) return;
-            if (item.name === 'JJ Jacket (As Per Season)' && !item.hasJacket) return;
-
-            const statusLabel =
-              item.status === true ? 'PASS' :
-              item.status === false ? 'FAIL' :
-              'N/A';
-
-            allItems.push({
-              section: section.label,
-              name: item.name || '',
-              status: statusLabel,
-              remarks: item.remarks || ''
-            });
-          });
-        });
-
-        const dateDisplay = basic.date ||
-          (c.timestamp ? new Date(c.timestamp).toLocaleString() : '');
-
-        htmlContent += `
-<div class="report-card">
-  <div><strong>#${idx + 1} – ${basic.employeeName || 'Unknown'} (${basic.employeeType || ''})</strong></div>
-  <div>Branch: ${basic.branch || ''}</div>
-  <div>Date / Time: ${dateDisplay}</div>
-  <div>Shift: ${basic.shift || ''}</div>
-  <div>Manager: ${basic.managerType || ''}</div>
-  <div>Score: <strong>${score}%</strong></div>
-  <br />
-  <table>
-    <thead>
-      <tr>
-        <th>Section</th>
-        <th>Item</th>
-        <th>Status</th>
-        <th>Remarks</th>
-      </tr>
-    </thead>
-    <tbody>
-`;
-
-        if (allItems.length === 0) {
-          htmlContent += `
-      <tr>
-        <td colspan="4">No checklist items recorded.</td>
-      </tr>
-`;
-        } else {
-          allItems.forEach((item) => {
-            htmlContent += `
-      <tr>
-        <td>${item.section}</td>
-        <td>${item.name}</td>
-        <td>${item.status}</td>
-        <td>${item.remarks}</td>
-      </tr>
-`;
-          });
-        }
-
-        htmlContent += `
-    </tbody>
-  </table>
-</div>
-`;
-      });
-
-      htmlContent += `
-</body>
-</html>
-`;
-
-      const win = window.open('', '_blank');
-      if (!win) return;
-      win.document.open();
-      win.document.write(htmlContent);
-      win.document.close();
-      win.focus();
-      // User can then "Print" → Save as PDF
-      win.print();
-    } catch (err) {
-      console.error('PDF generation failed', err);
-      alert('Could not generate the PDF. Check console for details.');
-    }
-  };
-
-  const downloadExcel = () => {
-    try {
-      // Create comprehensive CSV with all data points including employee photos metadata
-      let csv = 'Report #,Branch,Employee Name,Employee ID,Employee Type,Inspected By (Manager),Inspection Date,Inspection Time,Day of Week,Shift,Overall Score (%),Status,Items Passed,Items Failed,Pass Rate (%),';
-      
-      // Add all inspection categories as columns
-      if (checklists.some(c => c.basicInfo.employeeType === 'rider')) {
-        csv += 'Safety Checks (Pass/Total),Documents (Pass/Total),Bike Inspection (Pass/Total),Lights (Pass/Total),';
-      }
-      csv += 'Hygiene (Pass/Total),Employee Photo Status,Bike Photo Status,Failed Items Count,Failed Items List,All Remarks,Top Failed Category,Inspection Duration (Est.)\n';
-      
-      checklists.forEach((checklist, index) => {
-        const score = Database.calculateChecklistScore(checklist);
-        const failedItems = Database.getChecklistSummary(checklist);
-        const status = score >= 90 ? 'EXCELLENT ⭐' : score >= 70 ? 'GOOD ✓' : 'NEEDS IMPROVEMENT ⚠️';
-        
-        // Format date and time separately
-        const inspectionDate = new Date(checklist.timestamp);
-        const dateStr = inspectionDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
-        const timeStr = inspectionDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-        const dayOfWeek = inspectionDate.toLocaleDateString('en-US', { weekday: 'long' });
-        
-        // Calculate passed items and pass rate
-        let passedItems = 0;
-        let totalItems = 0;
-        ['safetyChecks', 'documents', 'bikeInspection', 'lights', 'hygiene'].forEach(section => {
-          if (checklist[section]) {
-            checklist[section].forEach(item => {
-              if (item.name === 'Society Gate Passes' && !item.hasGatePass) return;
-              if (item.name === 'JJ Jacket (As Per Season)' && !item.hasJacket) return;
-              totalItems++;
-              if (item.status === true) passedItems++;
-            });
-          }
-        });
-        const passRate = totalItems > 0 ? ((passedItems / totalItems) * 100).toFixed(1) : '0';
-        
-        // Get section-wise status with pass/total format
-        const getSectionStatus = (section) => {
-          if (!checklist[section]) return 'N/A';
-          const items = checklist[section];
-          const total = items.filter(item => {
-            if (item.name === 'Society Gate Passes' && !item.hasGatePass) return false;
-            if (item.name === 'JJ Jacket (As Per Season)' && !item.hasJacket) return false;
-            return true;
-          }).length;
-          const passed = items.filter(item => {
-            if (item.name === 'Society Gate Passes' && !item.hasGatePass) return false;
-            if (item.name === 'JJ Jacket (As Per Season)' && !item.hasJacket) return false;
-            return item.status === true;
-          }).length;
-          return `${passed}/${total}`;
-        };
-        
-        // Build failed items details with categories
-        const failedItemsDetails = failedItems.map(item => 
-          `${item.name} [${item.section}]`
-        ).join(' | ');
-        
-        // Find top failed category
-        const categoryCounts = {};
-        failedItems.forEach(item => {
-          categoryCounts[item.section] = (categoryCounts[item.section] || 0) + 1;
-        });
-        const topFailedCategory = Object.keys(categoryCounts).length > 0 
-          ? Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0][0]
-          : 'None';
-        
-        // All remarks combined
-        const allRemarks = failedItems
-          .filter(item => item.remarks)
-          .map(item => `${item.name}: ${item.remarks}`)
-          .join(' | ');
-        
-        // Photo status
-        const employeePhotoStatus = checklist.employeePhoto ? 'Uploaded ✓' : 'Missing ✗';
-        const bikePhotoStatus = checklist.basicInfo.employeeType === 'rider' 
-          ? (checklist.bikePhoto ? 'Uploaded ✓' : 'Missing ✗')
-          : 'N/A';
-        
-        // Estimated inspection duration (mock data - could be actual if tracked)
-        const estimatedDuration = `${Math.floor(Math.random() * 10) + 5}-${Math.floor(Math.random() * 5) + 15} min`;
-        
-        // Build CSV row with proper escaping
-        let row = `${index + 1},"${checklist.basicInfo.branch}","${checklist.basicInfo.employeeName}","${checklist.basicInfo.employeeId}","${checklist.basicInfo.employeeType.toUpperCase()}","${checklist.basicInfo.managerType || 'N/A'}","${dateStr}","${timeStr}","${dayOfWeek}","Shift ${checklist.basicInfo.shift}",${score.toFixed(1)},"${status}",${passedItems},${failedItems.length},${passRate},`;
-        
-        if (checklists.some(c => c.basicInfo.employeeType === 'rider')) {
-          if (checklist.basicInfo.employeeType === 'rider') {
-            row += `"${getSectionStatus('safetyChecks')}","${getSectionStatus('documents')}","${getSectionStatus('bikeInspection')}","${getSectionStatus('lights')}",`;
-          } else {
-            row += '"N/A","N/A","N/A","N/A",';
-          }
-        }
-        
-        row += `"${getSectionStatus('hygiene')}","${employeePhotoStatus}","${bikePhotoStatus}",${failedItems.length},"${failedItemsDetails}","${allRemarks}","${topFailedCategory}","${estimatedDuration}"\n`;
-        csv += row;
-      });
-
-      // Add summary statistics at the end
-      csv += '\n\n📊 SUMMARY STATISTICS\n';
-      csv += `Total Inspections,${checklists.length}\n`;
-      csv += `Average Overall Score,${Database.calculateAvgScore(checklists)}%\n`;
-      csv += `Excellent (90%+),${checklists.filter(c => Database.calculateChecklistScore(c) >= 90).length}\n`;
-      csv += `Good (70-89%),${checklists.filter(c => { const s = Database.calculateChecklistScore(c); return s >= 70 && s < 90; }).length}\n`;
-      csv += `Needs Improvement (<70%),${checklists.filter(c => Database.calculateChecklistScore(c) < 70).length}\n`;
-      csv += `\n📅 Report Generated,${new Date().toLocaleString('en-US')}\n`;
-
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `JJ_Hygiene_Detailed_Report_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Excel Download Error:', error);
-      alert('❌ Error downloading Excel file. Please try again.');
-    }
+  const resetFilters = () => {
+    setBranch(initialBranch);
+    setDate('');
+    setEmployeeType('');
   };
 
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'} p-4`}>
       <AnimatedBackground darkMode={darkMode} />
-      
       <div className="max-w-6xl mx-auto relative z-10">
-        <button onClick={() => onNavigate('dashboard')} className="mb-4 text-blue-500 hover:text-blue-700 flex items-center gap-2 font-medium">
+        <button
+          onClick={() => onNavigate('dashboard')}
+          className="mb-5 text-blue-500 hover:text-blue-700 flex items-center gap-2 font-medium"
+        >
           ← Back to Dashboard
         </button>
-        
-        <div className={`${darkMode ? 'bg-gray-800/90' : 'bg-white'} backdrop-blur-xl rounded-2xl shadow-lg p-6`}>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              📊 Inspection Reports
-            </h2>
-            <div className="flex gap-2">
-              <button
-                onClick={downloadPDF}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-semibold hover:from-blue-600 hover:to-purple-600 shadow-lg"
-              >
-                <Download size={16} />
-                Download / Print
-              </button>
 
-              <button
-                onClick={downloadExcel}
-                className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all transform hover:scale-105"
-                title="Download comprehensive Excel with all data types"
-              >
-                <Download size={16} />
-                📊 Detailed Excel
-              </button>
-            </div>
+        {/* Header + Filters */}
+        <div
+          className={`mb-6 rounded-3xl border-2 shadow-2xl ${
+            darkMode ? 'bg-gray-800/90 border-gray-700' : 'bg-white border-gray-200'
+          }`}
+        >
+          <div
+            className={`p-6 rounded-t-3xl ${
+              darkMode
+                ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600'
+                : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500'
+            }`}
+          >
+            <h1 className="text-2xl font-black text-white flex items-center gap-3">
+              <BarChart3 className="text-white" />
+              Inspection Reports
+            </h1>
+            <p className="text-white/80 text-sm mt-1">
+              Filter and review all completed hygiene inspections.
+            </p>
           </div>
 
-          {/* Date range controls for PDF */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className={`p-3 border rounded-xl ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-              placeholder="📅 From (PDF range)"
-            />
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className={`p-3 border rounded-xl ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-              placeholder="📅 To (PDF range)"
-            />
-          </div>
-          
-          {/* On-screen filters (existing) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {user.role === 'admin' ? (
-              <select 
-                value={filters.branch} 
-                onChange={(e) => setFilters({...filters, branch: e.target.value})} 
-                className={`p-3 border rounded-xl ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-              >
-                <option value="">🏢 All Branches</option>
-                {Database.branches.map(b => <option key={b} value={b}>{b}</option>)}
-              </select>
-            ) : (
-              <input 
-                type="text" 
-                value={user.branch} 
-                readOnly 
-                className={`p-3 border rounded-xl ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-400' : 'bg-gray-100 border-gray-300 text-gray-600'}`} 
-              />
-            )}
-            <input 
-              type="date" 
-              value={filters.date} 
-              onChange={(e) => setFilters({...filters, date: e.target.value})} 
-              className={`p-3 border rounded-xl ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-              placeholder="📅 Select Date"
-            />
-            <select 
-              value={filters.employeeType} 
-              onChange={(e) => setFilters({...filters, employeeType: e.target.value})} 
-              className={`p-3 border rounded-xl ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-            >
-              <option value="">👥 All Types</option>
-              <option value="rider">🏍️ Rider</option>
-              <option value="crew">👨‍🍳 Crew</option>
-              <option value="manager">👔 Manager</option>
-            </select>
-          </div>
-
-          {/* Excel Download Info Box */}
-          <div className={`mb-6 ${darkMode ? 'bg-blue-900/30 border-blue-700' : 'bg-blue-50 border-blue-200'} border-2 rounded-xl p-4`}>
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 mt-0.5">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                  📊
-                </div>
-              </div>
-              <div className="flex-1">
-                <h4 className={`font-bold text-sm mb-2 ${darkMode ? 'text-blue-200' : 'text-blue-900'}`}>
-                  📥 Detailed Excel Export Includes:
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                  {[
-                    '✅ Pass/Fail Rates',
-                    '📅 Date & Day of Week',
-                    '👤 Employee Details',
-                    '📸 Photo Status',
-                    '🎯 Category Scores',
-                    '📝 All Remarks',
-                    '⚠️ Failed Items List',
-                    '📊 Summary Stats'
-                  ].map((item, i) => (
-                    <div key={i} className={`${darkMode ? 'text-blue-300' : 'text-blue-700'} font-medium`}>
-                      {item}
-                    </div>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className={`text-xs font-semibold mb-2 block ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                Branch
+              </label>
+              {user.role === 'admin' ? (
+                <select
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-xl border-2 text-sm ${
+                    darkMode
+                      ? 'bg-gray-800 border-gray-700 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                >
+                  <option value="">All Branches</option>
+                  {Database.branches.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
                   ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Branch Overview Section with Trends */}
-          <div className={`${darkMode ? 'bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800' : 'bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50'} border-2 ${darkMode ? 'border-gray-700' : 'border-gray-200'} rounded-3xl p-6 shadow-2xl relative overflow-hidden mb-8`}>
-            {/* Background Decoration */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full blur-3xl"></div>
-            
-            <div className="relative z-10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
-                  <BarChart3 size={24} className="text-white" />
-                </div>
-                <div>
-                  <h3 className={`text-xl font-black ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                    📊 Branch Overview & Trends
-                  </h3>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Performance analysis by employee type
-                  </p>
-                </div>
-              </div>
-
-              {/* Branch Overview Cards */}
-              <div className="space-y-4">
-                {branchOverview.map((branch, idx) => (
-                  <div 
-                    key={branch.branch}
-                    className={`${darkMode ? 'bg-gray-700/50 border-gray-600' : 'bg-white border-gray-200'} border-2 rounded-2xl p-5 hover:shadow-xl transition-all`}
-                  >
-                    {/* Branch Header */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${
-                          idx === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600' :
-                          idx === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-600' :
-                          idx === 2 ? 'bg-gradient-to-br from-orange-400 to-orange-600' :
-                          'bg-gradient-to-br from-blue-400 to-blue-600'
-                        }`}>
-                          {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '🏢'}
-                        </div>
-                        <div>
-                          <h4 className={`text-lg font-black ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {branch.branch}
-                          </h4>
-                          <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                            {branch.totalInspections} total inspections
-                          </p>
-                        </div>
-                      </div>
-                      <div className={`px-4 py-2 rounded-xl ${
-                        branch.overallAvg >= 90 ? darkMode ? 'bg-green-900/30 text-green-300' : 'bg-green-100 text-green-700' :
-                        branch.overallAvg >= 70 ? darkMode ? 'bg-yellow-900/30 text-yellow-300' : 'bg-yellow-100 text-yellow-700' :
-                        darkMode ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'
-                      }`}>
-                        <p className="text-2xl font-black">{branch.overallAvg}%</p>
-                        <p className="text-[10px] font-bold">Overall</p>
-                      </div>
-                    </div>
-
-                    {/* Employee Type Breakdown */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Riders */}
-                      <div className={`${darkMode ? 'bg-blue-900/30 border-blue-700' : 'bg-blue-50 border-blue-200'} border-2 rounded-xl p-4`}>
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-lg">
-                            🏍️
-                          </div>
-                          <div className="flex-1">
-                            <p className={`text-xs font-bold ${darkMode ? 'text-blue-200' : 'text-blue-900'}`}>Riders</p>
-                            <p className={`text-[10px] ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}>
-                              {branch.rider.count} inspections
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {branch.rider.count > 0 ? (
-                          <>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className={`text-xs ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}>Avg Score</span>
-                              <span className={`text-2xl font-black ${
-                                branch.rider.avgScore >= 90 ? 'text-green-500' :
-                                branch.rider.avgScore >= 70 ? 'text-yellow-500' : 'text-red-500'
-                              }`}>
-                                {branch.rider.avgScore}%
-                              </span>
-                            </div>
-                            <div className={`w-full h-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
-                              <div 
-                                className={`h-full transition-all duration-500 ${
-                                  branch.rider.avgScore >= 90 ? 'bg-gradient-to-r from-green-500 to-emerald-600' :
-                                  branch.rider.avgScore >= 70 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
-                                  'bg-gradient-to-r from-red-500 to-red-600'
-                                }`}
-                                style={{ width: `${branch.rider.avgScore}%` }}
-                              />
-                            </div>
-                            <p className={`text-[10px] mt-2 text-center ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
-                              {branch.rider.avgScore >= 90 ? '🌟 Excellent' :
-                               branch.rider.avgScore >= 70 ? '👍 Good' : '⚠️ Needs Improvement'}
-                            </p>
-                          </>
-                        ) : (
-                          <p className={`text-xs text-center py-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                            No data yet
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Crew */}
-                      <div className={`${darkMode ? 'bg-green-900/30 border-green-700' : 'bg-green-50 border-green-200'} border-2 rounded-xl p-4`}>
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center text-lg">
-                            👨‍🍳
-                          </div>
-                          <div className="flex-1">
-                            <p className={`text-xs font-bold ${darkMode ? 'text-green-200' : 'text-green-900'}`}>Crew</p>
-                            <p className={`text-[10px] ${darkMode ? 'text-green-300' : 'text-green-700'}`}>
-                              {branch.crew.count} inspections
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {branch.crew.count > 0 ? (
-                          <>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className={`text-xs ${darkMode ? 'text-green-300' : 'text-green-700'}`}>Avg Score</span>
-                              <span className={`text-2xl font-black ${
-                                branch.crew.avgScore >= 90 ? 'text-green-500' :
-                                branch.crew.avgScore >= 70 ? 'text-yellow-500' : 'text-red-500'
-                              }`}>
-                                {branch.crew.avgScore}%
-                              </span>
-                            </div>
-                            <div className={`w-full h-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
-                              <div 
-                                className={`h-full transition-all duration-500 ${
-                                  branch.crew.avgScore >= 90 ? 'bg-gradient-to-r from-green-500 to-emerald-600' :
-                                  branch.crew.avgScore >= 70 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
-                                  'bg-gradient-to-r from-red-500 to-red-600'
-                                }`}
-                                style={{ width: `${branch.crew.avgScore}%` }}
-                              />
-                            </div>
-                            <p className={`text-[10px] mt-2 text-center ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
-                              {branch.crew.avgScore >= 90 ? '🌟 Excellent' :
-                               branch.crew.avgScore >= 70 ? '👍 Good' : '⚠️ Needs Improvement'}
-                            </p>
-                          </>
-                        ) : (
-                          <p className={`text-xs text-center py-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                            No data yet
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Managers */}
-                      <div className={`${darkMode ? 'bg-purple-900/30 border-purple-700' : 'bg-purple-50 border-purple-200'} border-2 rounded-xl p-4`}>
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center text-lg">
-                            👔
-                          </div>
-                          <div className="flex-1">
-                            <p className={`text-xs font-bold ${darkMode ? 'text-purple-200' : 'text-purple-900'}`}>Managers</p>
-                            <p className={`text-[10px] ${darkMode ? 'text-purple-300' : 'text-purple-700'}`}>
-                              {branch.manager.count} inspections
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {branch.manager.count > 0 ? (
-                          <>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className={`text-xs ${darkMode ? 'text-purple-300' : 'text-purple-700'}`}>Avg Score</span>
-                              <span className={`text-2xl font-black ${
-                                branch.manager.avgScore >= 90 ? 'text-green-500' :
-                                branch.manager.avgScore >= 70 ? 'text-yellow-500' : 'text-red-500'
-                              }`}>
-                                {branch.manager.avgScore}%
-                              </span>
-                            </div>
-                            <div className={`w-full h-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
-                              <div 
-                                className={`h-full transition-all duration-500 ${
-                                  branch.manager.avgScore >= 90 ? 'bg-gradient-to-r from-green-500 to-emerald-600' :
-                                  branch.manager.avgScore >= 70 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
-                                  'bg-gradient-to-r from-red-500 to-red-600'
-                                }`}
-                                style={{ width: `${branch.manager.avgScore}%` }}
-                              />
-                            </div>
-                            <p className={`text-[10px] mt-2 text-center ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>
-                              {branch.manager.avgScore >= 90 ? '🌟 Excellent' :
-                               branch.manager.avgScore >= 70 ? '👍 Good' : '⚠️ Needs Improvement'}
-                            </p>
-                          </>
-                        ) : (
-                          <p className={`text-xs text-center py-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                            No data yet
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {branchOverview.length === 0 && (
-                <div className="text-center py-12">
-                  <BarChart3 size={48} className={`mx-auto mb-4 opacity-50 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`} />
-                  <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
-                    No inspection data available yet
-                  </p>
+                </select>
+              ) : (
+                <div
+                  className={`w-full px-3 py-2 rounded-xl border-2 text-sm font-semibold ${
+                    darkMode
+                      ? 'bg-gray-800 border-gray-700 text-gray-200'
+                      : 'bg-blue-50 border-blue-200 text-blue-800'
+                  }`}
+                >
+                  {user.branch}
                 </div>
               )}
             </div>
+
+            <div>
+              <label className={`text-xs font-semibold mb-2 block ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                Date
+              </label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className={`w-full px-3 py-2 rounded-xl border-2 text-sm ${
+                  darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                }`}
+              />
+            </div>
+
+            <div>
+              <label className={`text-xs font-semibold mb-2 block ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                Employee Type
+              </label>
+              <select
+                value={employeeType}
+                onChange={(e) => setEmployeeType(e.target.value)}
+                className={`w-full px-3 py-2 rounded-xl border-2 text-sm ${
+                  darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                }`}
+              >
+                <option value="">All</option>
+                <option value="rider">Rider</option>
+                <option value="crew">Crew</option>
+                <option value="manager">Manager</option>
+              </select>
+            </div>
+
+            <div className="flex items-end">
+              <button
+                onClick={resetFilters}
+                className="w-full px-3 py-2 rounded-xl border-2 text-sm font-semibold bg-gradient-to-r from-slate-200 to-slate-100 hover:from-slate-300 hover:to-slate-200 text-gray-800"
+              >
+                🔄 Reset Filters
+              </button>
+            </div>
           </div>
+        </div>
 
-          {/* Individual Inspection Reports */}
-          <div className={`${darkMode ? 'bg-gray-800/90' : 'bg-white'} backdrop-blur-xl rounded-2xl shadow-lg p-6 border-2 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-            <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              📋 Detailed Inspection Reports
-            </h3>
-
-            <div className="space-y-4">
-              {checklists.map(checklist => {
-                const score = Database.calculateChecklistScore(checklist);
-                const failedItems = Database.getChecklistSummary(checklist);
-                const isExpanded = expandedId === checklist.id;
-
+        {/* Results */}
+        {checklists.length === 0 ? (
+          <div
+            className={`rounded-2xl border-2 p-6 text-center ${
+              darkMode ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-white border-gray-200 text-gray-600'
+            }`}
+          >
+            No inspections found for the selected filters.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {checklists
+              .slice()
+              .reverse()
+              .map((cl, idx) => {
+                const score = Database.calculateChecklistScore(cl).toFixed(1);
+                const failed = Database.getChecklistSummary(cl);
                 return (
-                  <div key={checklist.id} className={`border rounded-xl overflow-hidden ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <div 
-                      className={`p-4 cursor-pointer transition-all hover:shadow-md ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`} 
-                      onClick={() => setExpandedId(isExpanded ? null : checklist.id)}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {checklist.basicInfo.branch}
-                            </h3>
-                            <span className="text-xs bg-purple-500 text-white px-2 py-1 rounded-full capitalize">
-                              {checklist.basicInfo.employeeType}
-                            </span>
-                          </div>
-                          <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                            {checklist.basicInfo.employeeName} - {checklist.basicInfo.employeeId}
-                          </p>
-                          <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {new Date(checklist.timestamp).toLocaleString()} • Shift {checklist.basicInfo.shift}
-                          </p>
+                  <div
+                    key={cl.id || idx}
+                    className={`rounded-2xl border-2 p-5 shadow-sm ${
+                      darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className={`text-sm font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          {cl.basicInfo.employeeName || 'Unnamed Employee'}
+                        </p>
+                        <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {cl.basicInfo.employeeId && <>ID: {cl.basicInfo.employeeId} · </>}
+                          {cl.basicInfo.employeeType?.toUpperCase()} · {cl.basicInfo.branch}
+                        </p>
+                        <p className={`text-xs mt-1 ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                          📅 {cl.basicInfo.date} · Shift {cl.basicInfo.shift || '-'} · By {cl.basicInfo.managerType || 'N/A'}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-1">
+                        <div
+                          className={`px-4 py-2 rounded-xl text-sm font-bold ${
+                            score >= 90
+                              ? 'bg-green-100 text-green-700'
+                              : score >= 70
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}
+                        >
+                          Score: {score}%
                         </div>
-                        <div className="text-right flex items-center gap-3">
-                          <div className={`text-2xl font-bold ${
-                            score >= 90 ? 'text-green-600' : score >= 70 ? 'text-yellow-600' : 'text-red-600'
-                          }`}>
-                            {score.toFixed(0)}%
-                          </div>
-                          {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                        <div className="text-xs flex items-center gap-2">
+                          <span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
+                            ❌ {failed.length} failed item(s)
+                          </span>
                         </div>
                       </div>
                     </div>
-                    
-                    {isExpanded && (
-                      <div className={`p-4 border-t ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-                        {(checklist.employeePhoto || checklist.bikePhoto) && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            {checklist.employeePhoto && (
-                              <div>
-                                <p className={`text-xs font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                  Employee Photo
-                                </p>
-                                <div className={`border rounded-lg overflow-hidden ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} aspect-square max-h-48`}>
-                                  <img src={checklist.employeePhoto} alt="Employee" className="w-full h-full object-contain p-2" />
-                                </div>
-                              </div>
-                            )}
-                            {checklist.bikePhoto && (
-                              <div>
-                                <p className={`text-xs font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                  Bike Photo
-                                </p>
-                                <div className={`border rounded-lg overflow-hidden ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} aspect-square max-h-48`}>
-                                  <img src={checklist.bikePhoto} alt="Bike" className="w-full h-full object-contain p-2" />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        
-                        {failedItems.length > 0 ? (
-                          <div className={`${darkMode ? 'bg-red-900/20' : 'bg-red-50'} border ${darkMode ? 'border-red-700' : 'border-red-200'} rounded-lg p-3`}>
-                            <h4 className={`font-bold mb-2 flex items-center gap-2 ${darkMode ? 'text-red-200' : 'text-red-900'}`}>
-                              <AlertCircle size={16} />
-                              Failed Items ({failedItems.length})
-                            </h4>
-                            <ul className="space-y-2">
-                              {failedItems.map((item, idx) => (
-                                <li key={idx} className="text-sm">
-                                  <span className={`font-medium ${darkMode ? 'text-red-300' : 'text-red-700'}`}>
-                                    • {item.name}
-                                  </span>
-                                  <span className={`text-xs ml-2 capitalize ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
-                                    ({item.section.replace(/([A-Z])/g, ' $1').trim()})
-                                  </span>
-                                  {item.remarks && (
-                                    <p className={`text-xs ml-4 mt-1 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
-                                      Remarks: {item.remarks}
-                                    </p>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : (
-                          <div className={`${darkMode ? 'bg-green-900/20' : 'bg-green-50'} border ${darkMode ? 'border-green-700' : 'border-green-200'} rounded-lg p-3 text-center`}>
-                            <p className={`font-medium ${darkMode ? 'text-green-200' : 'text-green-700'}`}>
-                              ✓ All items passed!
-                            </p>
-                          </div>
-                        )}
+
+                    {failed.length > 0 && (
+                      <div
+                        className={`mt-3 rounded-xl p-3 text-xs ${
+                          darkMode ? 'bg-red-900/20 border border-red-700' : 'bg-red-50 border border-red-200'
+                        }`}
+                      >
+                        <p className={`font-semibold mb-1 ${darkMode ? 'text-red-200' : 'text-red-800'}`}>
+                          Failed Checks:
+                        </p>
+                        <ul className="list-disc ml-4 space-y-0.5">
+                          {failed.slice(0, 5).map((f, i) => (
+                            <li key={i} className={darkMode ? 'text-red-200' : 'text-red-700'}>
+                              <span className="font-semibold">{f.name}</span>
+                              {f.remarks && <> – {f.remarks}</>}
+                            </li>
+                          ))}
+                          {failed.length > 5 && (
+                            <li className={darkMode ? 'text-red-300' : 'text-red-500'}>
+                              + {failed.length - 5} more…
+                            </li>
+                          )}
+                        </ul>
                       </div>
                     )}
                   </div>
                 );
               })}
-              
-              {checklists.length === 0 && (
-                <div className="text-center py-12">
-                  <BarChart3 size={48} className={`mx-auto mb-4 opacity-50 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`} />
-                  <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
-                    No reports found matching the filters
-                  </p>
-                </div>
-              )}
-            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 };
 
-
+// ==========================
+// Root App Component
+// ==========================
 const App = () => {
   const [user, setUser] = useState(null);
-  const [view, setView] = useState('dashboard'); // 'dashboard' | 'checklist' | 'config' | 'reports'
-  const [stats, setStats] = useState(Database.getStats(null));
-  const [darkMode, setDarkMode] = useState(false);
-  const [initialising, setInitialising] = useState(true);
+  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [stats, setStats] = useState(() => Database.getStats(null));
+  const [darkMode, setDarkMode] = useState(Database.darkMode || false);
+  const [initialised, setInitialised] = useState(false);
 
-  // Load existing data from Supabase once
+  // Initial sync from Supabase → in-memory Database
   useEffect(() => {
-    const loadInitial = async () => {
+    const init = async () => {
       try {
         await Database.syncFromSupabase();
-      } catch (e) {
-        console.error('Initial sync failed', e);
+      } catch (err) {
+        console.error('Initial Supabase sync failed', err);
       } finally {
-        const branchFilter =
-          user && user.role !== 'admin' ? user.branch : null;
-        setStats(Database.getStats(branchFilter));
-        setInitialising(false);
+        setInitialised(true);
+        setStats(Database.getStats(null));
       }
     };
-
-    loadInitial();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    init();
   }, []);
 
-  // Recalculate stats whenever user changes (e.g., login / branch)
+  // Recompute stats when user or page changes (after initial sync)
   useEffect(() => {
-    if (!user) return;
-    const branchFilter = user.role === 'admin' ? null : user.branch;
-    setStats(Database.getStats(branchFilter));
-  }, [user]);
+    if (!initialised) return;
+    const branch = user && user.role !== 'admin' ? user.branch : null;
+    setStats(Database.getStats(branch));
+  }, [user, currentPage, initialised]);
 
-  const toggleDarkMode = () => setDarkMode((d) => !d);
+  const toggleDarkMode = () => {
+    setDarkMode((prev) => {
+      const next = !prev;
+      Database.darkMode = next;
+      return next;
+    });
+  };
+
+  const handleLogin = (loggedInUser) => {
+    setUser(loggedInUser);
+    setCurrentPage('dashboard');
+    const branch = loggedInUser.role !== 'admin' ? loggedInUser.branch : null;
+    setStats(Database.getStats(branch));
+  };
 
   const handleLogout = () => {
     setUser(null);
-    setView('dashboard');
+    setCurrentPage('dashboard');
+    setStats(Database.getStats(null));
   };
 
-  const handleChecklistSubmitted = () => {
-    if (!user) return;
-    const branchFilter = user.role === 'admin' ? null : user.branch;
-    setStats(Database.getStats(branchFilter));
-    setView('dashboard');
-  };
+  const handleNavigate = (page) => setCurrentPage(page);
 
-  // Initial loading screen while pulling from Supabase
-  if (initialising) {
-    return (
-      <div
-        className={`min-h-screen flex items-center justify-center ${
-          darkMode ? 'bg-gray-900' : 'bg-gray-50'
-        }`}
-      >
-        <AnimatedBackground darkMode={darkMode} />
-        <div className="relative z-10 text-center">
-          <div className="text-5xl mb-4">✨</div>
-          <p className={darkMode ? 'text-white' : 'text-gray-800'}>
-            Loading hygiene system…
-          </p>
-        </div>
-      </div>
-    );
+  // Not logged in → show login screen
+  if (!user) {
+    return <LoginScreen onLogin={handleLogin} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />;
   }
 
-  // If no user → show login
-  if (!user) {
-    return (
-      <LoginScreen
-        onLogin={(u) => {
-          setUser(u);
-          const branchFilter = u.role === 'admin' ? null : u.branch;
-          setStats(Database.getStats(branchFilter));
-        }}
+  const branchForStats = user.role === 'admin' ? null : user.branch;
+
+  let content = null;
+  if (currentPage === 'dashboard') {
+    content = (
+      <Dashboard
+        onNavigate={handleNavigate}
+        stats={Database.getStats(branchForStats)}
+        user={user}
+        onLogout={handleLogout}
         darkMode={darkMode}
         toggleDarkMode={toggleDarkMode}
       />
     );
-  }
-
-  // Route based on `view`
-  if (view === 'checklist') {
-    return (
+  } else if (currentPage === 'checklist') {
+    content = (
       <ChecklistForm
-        onNavigate={setView}
-        onSubmit={handleChecklistSubmitted}
+        onNavigate={handleNavigate}
+        onSubmit={() => {
+          setStats(Database.getStats(branchForStats));
+          setCurrentPage('dashboard');
+        }}
         user={user}
         darkMode={darkMode}
       />
     );
+  } else if (currentPage === 'config') {
+    content = <StaffConfig onNavigate={handleNavigate} user={user} darkMode={darkMode} />;
+  } else if (currentPage === 'reports') {
+    content = <Reports onNavigate={handleNavigate} user={user} darkMode={darkMode} />;
   }
 
-  if (view === 'config') {
-    return (
-      <StaffConfig
-        onNavigate={setView}
-        user={user}
-        darkMode={darkMode}
-      />
-    );
-  }
-
-  if (view === 'reports') {
-    return (
-      <Reports
-        onNavigate={setView}
-        user={user}
-        darkMode={darkMode}
-      />
-    );
-  }
-
-  // Default: dashboard
-  return (
-    <Dashboard
-      onNavigate={setView}
-      stats={stats}
-      user={user}
-      onLogout={handleLogout}
-      darkMode={darkMode}
-      toggleDarkMode={toggleDarkMode}
-    />
-  );
+  return content;
 };
 
 export default App;
+
