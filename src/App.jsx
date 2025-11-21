@@ -3220,68 +3220,156 @@ const Reports = ({ onNavigate, user, darkMode }) => {
   );
 
   const handleDownloadCsv = () => {
-    if (checklists.length === 0) {
-      alert('No inspections found for the selected filters.');
-      return;
-    }
+  if (checklists.length === 0) {
+    alert('No inspections found for the selected filters.');
+    return;
+  }
 
-    const headers = [
-      'Branch',
-      'Date',
-      'Shift',
-      'Employee Name',
-      'Employee ID',
-      'Employee Type',
-      'Manager Type',
-      'Score',
-      'Failed Items'
-    ];
+  // --- Filenames ---
+  const branchSlug = (filters.branch || 'all').replace(/\s+/g, '_');
+  const start = filters.startDate || 'start';
+  const end = filters.endDate || 'end';
 
-    const rows = [headers.join(',')];
+  // ============================
+  // 1️⃣ SUMMARY CSV (one row per inspection)
+  // ============================
+  let summaryCsv =
+    'Report ID,Branch,Date,Time,Day,Shift,Employee Name,Employee ID,Employee Type,Manager,Score (%),Items Passed,Items Failed,Pass Rate (%),Hygiene (P/T),Safety (P/T),Documents (P/T),Bike (P/T),Lights (P/T),Employee Photo,Bike Photo,Top Failed Category\n';
 
-    checklists.forEach((c, idx) => {
-      const score = Database.calculateChecklistScore(c).toFixed(1);
-      const failed = Database.getChecklistSummary(c)
-        .map(f => `${f.section}: ${f.name}`)
-        .join(' | ');
+  // ============================
+  // 2️⃣ DETAILS CSV (one row per failed item)
+  // ============================
+  let detailsCsv =
+    'Report ID,Section,Checklist Item,Status,Remarks,Category\n';
 
-      const values = [
-        c.basicInfo.branch || '',
-        c.basicInfo.date || '',
-        c.basicInfo.shift || '',
-        c.basicInfo.employeeName || '',
-        c.basicInfo.employeeId || '',
-        c.basicInfo.employeeType || '',
-        c.basicInfo.managerType || '',
-        score,
-        failed
-      ].map(v => {
-        const str = String(v).replace(/"/g, '""');
-        return `"${str}"`;
+  checklists.forEach((c, idx) => {
+    const reportId = idx + 1;
+
+    const score = Database.calculateChecklistScore(c).toFixed(1);
+    const failedItems = Database.getChecklistSummary(c);
+
+    const timestamp = new Date(c.timestamp);
+    const dateStr = timestamp.toLocaleDateString('en-US');
+    const timeStr = timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const dayOfWeek = timestamp.toLocaleDateString('en-US', { weekday: 'long' });
+
+    // --- Pass/fail calculation ---
+    let passedItems = 0;
+    let totalItems = 0;
+
+    const sections = ['hygiene', 'safetyChecks', 'documents', 'bikeInspection', 'lights'];
+    const sectionStats = {};
+
+    sections.forEach(sec => {
+      if (!c[sec]) {
+        sectionStats[sec] = 'N/A';
+        return;
+      }
+
+      const validItems = c[sec].filter(i => {
+        if (i.name === 'Society Gate Passes' && !i.hasGatePass) return false;
+        if (i.name === 'JJ Jacket (As Per Season)' && !i.hasJacket) return false;
+        return true;
       });
 
-      rows.push(values.join(','));
+      const passed = validItems.filter(i => i.status === true).length;
+
+      sectionStats[sec] = `${passed}/${validItems.length}`;
+
+      validItems.forEach(i => {
+        totalItems++;
+        if (i.status === true) passedItems++;
+      });
     });
 
-    const csv = rows.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const passRate = totalItems ? ((passedItems / totalItems) * 100).toFixed(1) : '0';
+
+    // --- Top Failed Category ---
+    const categoryCounts = {};
+    failedItems.forEach(item => {
+      categoryCounts[item.section] = (categoryCounts[item.section] || 0) + 1;
+    });
+
+    const topFailedCategory =
+      Object.keys(categoryCounts).length > 0
+        ? Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0][0]
+        : 'None';
+
+    // --- Photo Status ---
+    const employeePhotoStatus = c.employeePhoto ? 'Uploaded' : 'Missing';
+    const bikePhotoStatus =
+      c.basicInfo.employeeType === 'rider'
+        ? (c.bikePhoto ? 'Uploaded' : 'Missing')
+        : 'N/A';
+
+    // ============================
+    // 🟦 Add row to SUMMARY CSV
+    // ============================
+    summaryCsv += [
+      reportId,
+      c.basicInfo.branch,
+      dateStr,
+      timeStr,
+      dayOfWeek,
+      c.basicInfo.shift,
+      c.basicInfo.employeeName,
+      c.basicInfo.employeeId,
+      c.basicInfo.employeeType,
+      c.basicInfo.managerType || 'N/A',
+      score,
+      passedItems,
+      failedItems.length,
+      passRate,
+      sectionStats.hygiene,
+      sectionStats.safetyChecks,
+      sectionStats.documents,
+      sectionStats.bikeInspection,
+      sectionStats.lights,
+      employeePhotoStatus,
+      bikePhotoStatus,
+      topFailedCategory
+    ]
+      .map(v => `"${String(v).replace(/"/g, '""')}"`)
+      .join(',') + '\n';
+
+    // ============================
+    // 🟥 Add rows to DETAILS CSV
+    // ============================
+    failedItems.forEach(item => {
+      detailsCsv += [
+        reportId,
+        item.section,
+        item.name,
+        'FAIL',
+        item.remarks || '',
+        item.section
+      ]
+        .map(v => `"${String(v).replace(/"/g, '""')}"`)
+        .join(',') + '\n';
+    });
+  });
+
+  // ============================
+  // 📥 Download both CSVs
+  // ============================
+  const download = (content, filename) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-
-    const branchSlug = (filters.branch || 'all').replace(/\s+/g, '_');
-    const start = filters.startDate || 'start';
-    const end = filters.endDate || 'end';
-
     link.href = url;
-    link.setAttribute(
-      'download',
-      `hygiene_report_${branchSlug}_${start}_${end}.csv`
-    );
+    link.setAttribute('download', filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+
+  download(summaryCsv, `hygiene_summary_${branchSlug}_${start}_${end}.csv`);
+  download(detailsCsv, `hygiene_failed_items_${branchSlug}_${start}_${end}.csv`);
+
+  alert('CSV reports downloaded successfully!');
+};
+
 
  const handleDownloadPdf = () => {
   if (checklists.length === 0) {
