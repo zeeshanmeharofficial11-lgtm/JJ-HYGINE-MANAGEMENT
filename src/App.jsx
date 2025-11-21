@@ -7,8 +7,7 @@ import {
   CheckCircle, XCircle
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+
 
 const Database = {
   users: {
