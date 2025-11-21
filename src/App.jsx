@@ -7,6 +7,9 @@ import {
   CheckCircle, XCircle
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import { Download, FileText } from 'lucide-react'; // make sure FileText is included
 
 
 const Database = {
@@ -3280,6 +3283,74 @@ const Reports = ({ onNavigate, user, darkMode }) => {
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadPdf = () => {
+    if (checklists.length === 0) {
+      alert('No inspections found for the selected filters.');
+      return;
+    }
+
+    const doc = new jsPDF('p', 'mm', 'a4');
+
+    const branchText = filters.branch || 'All Branches';
+    const typeText = filters.employeeType || 'All Types';
+    const dateText = `${filters.startDate || 'Start'} → ${filters.endDate || 'End'}`;
+
+    const branchSlug = (filters.branch || 'all').replace(/\s+/g, '_');
+    const startSlug = filters.startDate || 'start';
+    const endSlug = filters.endDate || 'end';
+
+    // Header
+    doc.setFontSize(16);
+    doc.text('Hygiene Inspection Report', 14, 18);
+
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 26);
+    doc.text(`Branch: ${branchText}`, 14, 32);
+    doc.text(`Employee Type: ${typeText}`, 14, 38);
+    doc.text(`Date Range: ${dateText}`, 14, 44);
+    doc.text(
+      `Total Inspections: ${totalInspections} | Avg Score: ${avgScore}% | Total Fails: ${totalFailedItems}`,
+      14,
+      50
+    );
+
+    // Table data
+    const tableBody = checklists.map(c => {
+      const score = Database.calculateChecklistScore(c).toFixed(1);
+      const failedCount = Database.getChecklistSummary(c).length;
+
+      return [
+        c.basicInfo.branch || '',
+        c.basicInfo.date || '',
+        c.basicInfo.shift || '',
+        c.basicInfo.employeeName || '',
+        c.basicInfo.employeeType || '',
+        c.basicInfo.managerType || '',
+        `${score}%`,
+        String(failedCount)
+      ];
+    });
+
+    doc.autoTable({
+      startY: 56,
+      head: [[
+        'Branch',
+        'Date',
+        'Shift',
+        'Employee',
+        'Type',
+        'Manager',
+        'Score',
+        'Fails'
+      ]],
+      body: tableBody,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [41, 128, 185] }
+    });
+
+    doc.save(`hygiene_report_${branchSlug}_${startSlug}_${endSlug}.pdf`);
+  };
+
   return (
     <div
       className={`min-h-screen ${
@@ -3320,13 +3391,23 @@ const Reports = ({ onNavigate, user, darkMode }) => {
               </p>
             </div>
 
-            <button
-              onClick={handleDownloadCsv}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold shadow-lg hover:from-blue-600 hover:to-purple-600 transition-all"
-            >
-              <Download size={18} />
-              Download CSV
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={handleDownloadCsv}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold shadow-lg hover:from-blue-600 hover:to-purple-600 transition-all"
+              >
+                <Download size={18} />
+                Download CSV
+              </button>
+
+              <button
+                onClick={handleDownloadPdf}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold shadow-lg hover:from-emerald-600 hover:to-teal-600 transition-all"
+              >
+                <FileText size={18} />
+                Download PDF
+              </button>
+            </div>
           </div>
 
           {/* Filters */}
