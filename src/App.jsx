@@ -2045,29 +2045,28 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
         branch: user.role === 'admin' ? prev.basicInfo.branch : user.branch
       }
     }));
-  }, [employeeType]);
+  }, [employeeType, user.role, user.branch]);
 
+  // Just handle local image preview + persistence in checklist payload
   const handlePhotoUpload = (e, type) => {
-  const file = e.target.files[0];
-  if (!file) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const reader = new FileReader();
-  reader.onloadend = () => {
-    if (type === 'employee') {
-      setEmployeePhoto(reader.result);
-    } else {
-      setBikePhoto(reader.result);
-    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (type === 'employee') {
+        setEmployeePhoto(reader.result);
+      } else {
+        setBikePhoto(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
   };
-  reader.readAsDataURL(file);
-};
-
 
   const handleInputChange = (field, value) => {
     // Don't allow branch change for non-admin users
-    if (field === 'branch' && user.role !== 'admin') {
-      return;
-    }
+    if (field === 'branch' && user.role !== 'admin') return;
+
     setChecklist(prev => ({
       ...prev,
       basicInfo: { ...prev.basicInfo, [field]: value }
@@ -2101,7 +2100,7 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
     let total = 0;
     let completed = 0;
 
-    // Count basic info fields
+    // Basic info
     const basicFields = ['branch', 'date', 'shift', 'employeeName', 'employeeId', 'managerType'];
 
     basicFields.forEach(field => {
@@ -2109,26 +2108,27 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
       if (checklist.basicInfo[field]) completed++;
     });
 
-    // Count checklist items
+    // Checklist items
     sections.forEach(section => {
       if (checklist[section]) {
         checklist[section].forEach(item => {
           if (item.name === 'Society Gate Passes' && !item.hasGatePass) return;
           if (item.name === 'JJ Jacket (As Per Season)' && !item.hasJacket) return;
           if (employeeType !== 'rider' && item.name === 'JJ Rider Cap') return;
+
           total++;
           if (item.status !== null) completed++;
         });
       }
     });
 
-    // Count photos
+    // Photos
     if (employeeType === 'rider') {
-      total += 2; // employee photo + bike photo
+      total += 2; // employee + bike
       if (employeePhoto) completed++;
       if (bikePhoto) completed++;
     } else {
-      total += 1; // employee photo only
+      total += 1;
       if (employeePhoto) completed++;
     }
 
@@ -2146,6 +2146,7 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
       { ...checklist, employeePhoto, bikePhoto },
       user.username
     );
+
     if (result.success) {
       setEarnedPoints(result.points);
       setShowSuccess(true);
@@ -2464,25 +2465,22 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
           )}
 
           {/* Photos */}
-          // inside ChecklistForm JSX
-
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <PhotoUpload
-    label="Employee Photo"
-    photo={employeePhoto}
-    onChange={e => handlePhotoUpload(e, 'employee')}
-    darkMode={darkMode}
-  />
-  {employeeType === 'rider' && (
-    <PhotoUpload
-      label="Bike Photo"
-      photo={bikePhoto}
-      onChange={e => handlePhotoUpload(e, 'bike')}
-      darkMode={darkMode}
-    />
-  )}
-</div>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <PhotoUpload
+              label="Employee Photo"
+              photo={employeePhoto}
+              onChange={e => handlePhotoUpload(e, 'employee')}
+              darkMode={darkMode}
+            />
+            {employeeType === 'rider' && (
+              <PhotoUpload
+                label="Bike Photo"
+                photo={bikePhoto}
+                onChange={e => handlePhotoUpload(e, 'bike')}
+                darkMode={darkMode}
+              />
+            )}
+          </div>
 
           {/* Rider-only sections */}
           {employeeType === 'rider' && (
@@ -2656,6 +2654,7 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
     </div>
   );
 };
+
 
 const StaffConfigModal = ({ branch, type, onClose, onSave, darkMode }) => {
   const currentConfig = Database.getStaffConfig(branch, type);
