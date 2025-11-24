@@ -62,13 +62,28 @@ const Database = {
     return { success: false, message: 'Invalid username or password' };
   },
   
-  updateUserProgress(username, points) {
+async updateUserProgress(username, points) {
     const user = this.users[username.toLowerCase()];
     if (user) {
       user.points += points;
       user.level = Math.floor(user.points / 100) + 1;
       user.streak = (user.lastCheckDate === new Date().toDateString()) ? user.streak : user.streak + 1;
       user.lastCheckDate = new Date().toDateString();
+      
+      // 🔥 ADD THIS: Save to Supabase
+      try {
+        await supabase
+          .from('user_progress')
+          .upsert({
+            username: username.toLowerCase(),
+            points: user.points,
+            level: user.level,
+            streak: user.streak,
+            last_check_date: user.lastCheckDate
+          }, { onConflict: 'username' });
+      } catch (error) {
+        console.error('Error updating user progress in Supabase', error);
+      }
     }
   },
   
@@ -107,14 +122,23 @@ const Database = {
     return this.branchStaffConfig[branch][type];
   },
   
-  saveChecklist(data, username) {
+  async saveChecklist(data, username) {
     const id = Date.now().toString();
     const checklist = { ...data, id, timestamp: new Date().toISOString() };
     this.checklists.push(checklist);
     
+    // 🔥 ADD THIS: Save to Supabase
+    try {
+      await supabase
+        .from('checklists')
+        .insert({ data: checklist });
+    } catch (error) {
+      console.error('Error saving checklist to Supabase', error);
+    }
+    
     const score = this.calculateChecklistScore(checklist);
     const points = score >= 90 ? 20 : score >= 70 ? 10 : 5;
-    this.updateUserProgress(username, points);
+    await this.updateUserProgress(username, points);
     
     return { success: true, id, points, score };
   },
@@ -2135,14 +2159,14 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
     return { completed, total };
   };
 
-  const handleSubmitForm = () => {
+  const handleSubmitForm = async () => {
     const stats = getCompletionStats();
     if (stats.completed !== stats.total) {
       alert('Please complete all required fields before submitting.');
       return;
     }
 
-    const result = Database.saveChecklist(
+    const result = await Database.saveChecklist(  // Add await
       { ...checklist, employeePhoto, bikePhoto },
       user.username
     );
@@ -2155,7 +2179,6 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
       }, 3000);
     }
   };
-
   const stats = getCompletionStats();
   const progressPercent = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
 
