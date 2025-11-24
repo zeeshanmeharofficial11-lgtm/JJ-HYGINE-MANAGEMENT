@@ -1548,6 +1548,7 @@ const Dashboard = ({ onNavigate, stats, user, onLogout, darkMode, toggleDarkMode
 
 const PhotoUpload = ({ label, photo, onChange, darkMode }) => {
   const inputId = label.toLowerCase().replace(/\s+/g, '-') + '-upload';
+  const isUploading = photo === 'uploading...';
 
   return (
     <div
@@ -1559,13 +1560,25 @@ const PhotoUpload = ({ label, photo, onChange, darkMode }) => {
         {label}
       </label>
 
-      {photo && (
-        <div className="mb-2">
+      {isUploading && (
+        <div className="mb-2 flex items-center justify-center h-40 bg-gray-100 dark:bg-gray-700 rounded">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+            <p className="text-xs text-gray-500">Uploading to ImgBB...</p>
+          </div>
+        </div>
+      )}
+
+      {photo && !isUploading && (
+        <div className="mb-2 relative group">
           <img
             src={photo}
             alt={label}
             className="w-full h-40 object-cover rounded"
           />
+          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+            <span className="text-white text-xs">✓ Uploaded to ImgBB</span>
+          </div>
         </div>
       )}
 
@@ -1574,8 +1587,15 @@ const PhotoUpload = ({ label, photo, onChange, darkMode }) => {
         type="file"
         accept="image/*"
         onChange={onChange}
-        className="block w-full text-xs"
+        disabled={isUploading}
+        className={`block w-full text-xs ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
       />
+      
+      {photo && !isUploading && (
+        <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+          ✓ Image uploaded successfully
+        </p>
+      )}
     </div>
   );
 };
@@ -2071,21 +2091,39 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
     }));
   }, [employeeType]);
 
-  const handlePhotoUpload = (e, type) => {
+const handlePhotoUpload = async (e, type) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  const reader = new FileReader();
-  reader.onloadend = () => {
-    if (type === 'employee') {
-      setEmployeePhoto(reader.result);
-    } else {
-      setBikePhoto(reader.result);
-    }
-  };
-  reader.readAsDataURL(file);
-};
+  // Show loading state
+  if (type === 'employee') {
+    setEmployeePhoto('uploading...');
+  } else {
+    setBikePhoto('uploading...');
+  }
 
+  try {
+    // Upload to ImgBB
+    const imageUrl = await uploadImageToImgbb(file);
+    
+    // Store the URL
+    if (type === 'employee') {
+      setEmployeePhoto(imageUrl);
+    } else {
+      setBikePhoto(imageUrl);
+    }
+  } catch (error) {
+    console.error('Image upload failed:', error);
+    alert('❌ Image upload failed. Please try again.');
+    
+    // Reset on error
+    if (type === 'employee') {
+      setEmployeePhoto(null);
+    } else {
+      setBikePhoto(null);
+    }
+  }
+};
 
   const handleInputChange = (field, value) => {
     // Don't allow branch change for non-admin users
@@ -2146,39 +2184,45 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
       }
     });
 
-    // Count photos
-    if (employeeType === 'rider') {
-      total += 2; // employee photo + bike photo
-      if (employeePhoto) completed++;
-      if (bikePhoto) completed++;
-    } else {
-      total += 1; // employee photo only
-      if (employeePhoto) completed++;
-    }
+     if (employeeType === 'rider') {
+    total += 2; // employee photo + bike photo
+    if (employeePhoto && employeePhoto !== 'uploading...') completed++;
+    if (bikePhoto && bikePhoto !== 'uploading...') completed++;
+  } else {
+    total += 1; // employee photo only
+    if (employeePhoto && employeePhoto !== 'uploading...') completed++;
+  }
 
-    return { completed, total };
-  };
+  return { completed, total };
+};
 
-  const handleSubmitForm = async () => {
-    const stats = getCompletionStats();
-    if (stats.completed !== stats.total) {
-      alert('Please complete all required fields before submitting.');
-      return;
-    }
+const handleSubmitForm = async () => {
+  const stats = getCompletionStats();
+  if (stats.completed !== stats.total) {
+    alert('Please complete all required fields before submitting.');
+    return;
+  }
 
-    const result = await Database.saveChecklist(  // Add await
-      { ...checklist, employeePhoto, bikePhoto },
-      user.username
-    );
-    if (result.success) {
-      setEarnedPoints(result.points);
-      setShowSuccess(true);
-      setTimeout(() => {
-        setShowSuccess(false);
-        onSubmit();
-      }, 3000);
-    }
-  };
+  // Additional check for uploading state
+  if (employeePhoto === 'uploading...' || bikePhoto === 'uploading...') {
+    alert('⏳ Please wait for image uploads to complete.');
+    return;
+  }
+
+  const result = await Database.saveChecklist(
+    { ...checklist, employeePhoto, bikePhoto },
+    user.username
+  );
+  
+  if (result.success) {
+    setEarnedPoints(result.points);
+    setShowSuccess(true);
+    setTimeout(() => {
+      setShowSuccess(false);
+      onSubmit();
+    }, 3000);
+  }
+};
   const stats = getCompletionStats();
   const progressPercent = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
 
