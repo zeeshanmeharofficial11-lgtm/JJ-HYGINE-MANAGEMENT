@@ -4,7 +4,7 @@ import {
   Check, X, Camera, Save, AlertCircle, BarChart3, Users, Building, TrendingUp, Award,
   AlertTriangle, Edit2, ChevronDown, ChevronUp, LogOut, Lock, Star, Zap, Trophy,
   Target, Flame, Moon, Sun, Download, Mail, Bell, Filter, Calendar, MapPin, Clock,
-  CheckCircle, XCircle
+  CheckCircle, XCircle, Upload  // Add Upload here
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import jsPDF from 'jspdf';
