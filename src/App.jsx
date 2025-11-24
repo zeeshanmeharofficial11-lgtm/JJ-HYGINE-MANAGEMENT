@@ -2080,15 +2080,12 @@ const ChecklistSection = ({ title, items, section, handleCheck, objective, handl
 const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
   const [employeePhoto, setEmployeePhoto] = useState(null);
   const [bikePhoto, setBikePhoto] = useState(null);
-  const [employeeType, setEmployeeType] = useState('rider'); // rider | other
+  const [employeeType, setEmployeeType] = useState('rider');
   const [showSuccess, setShowSuccess] = useState(false);
   const [earnedPoints, setEarnedPoints] = useState(0);
 
-  const [isUploadingEmployee, setIsUploadingEmployee] = useState(false);
-  const [isUploadingBike, setIsUploadingBike] = useState(false);
-
-  // Non-admins are locked to their branch
-  const initialBranch = user.role === 'admin' ? '' : user.branch || '';
+  // Initialize with user's branch
+  const initialBranch = user.role === 'admin' ? '' : user.branch;
 
   const [checklist, setChecklist] = useState({
     basicInfo: {
@@ -2099,18 +2096,18 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
       employeeId: '',
       employeeType: 'rider',
       managerType: '',
-      objective: '',
+      objective: ''
     },
     safetyChecks: [
       { id: 1, name: 'Helmet', emoji: '🪖', required: true, status: null, remarks: '' },
       { id: 2, name: 'Working Mobile Phone', emoji: '📱', required: true, status: null, remarks: '' },
-      { id: 3, name: 'Safe Guard', emoji: '🛡️', required: true, status: null, remarks: '' },
+      { id: 3, name: 'Safe Guard', emoji: '🛡️', required: true, status: null, remarks: '' }
     ],
     documents: [
       { id: 1, name: 'Motorcycle License', emoji: '🪪', required: true, status: null, remarks: '' },
       { id: 2, name: 'Vehicle Registration Papers', emoji: '📋', required: true, status: null, remarks: '' },
       { id: 3, name: 'ID Card (CNIC)', emoji: '🆔', required: true, status: null, remarks: '' },
-      { id: 4, name: 'Society Gate Passes', emoji: '🎫', required: false, status: null, remarks: '', hasGatePass: false },
+      { id: 4, name: 'Society Gate Passes', emoji: '🎫', required: false, status: null, remarks: '', hasGatePass: false }
     ],
     bikeInspection: [
       { id: 1, name: 'Fuel Level', emoji: '⛽', status: null, remarks: '' },
@@ -2122,9 +2119,7 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
       { id: 7, name: 'Chain Cover - Top', emoji: '⛓️', status: null, remarks: '' },
       { id: 8, name: 'Chain Cover - Bottom', emoji: '⛓️', status: null, remarks: '' },
       { id: 9, name: 'Left View Mirror', emoji: '🪞', status: null, remarks: '' },
-      { id: 10, name: 'Right View Mirror', emoji: '🪞', status: null, remarks: '' },
-      { id: 11, name: 'Bike Horn', emoji: '📯', status: null, remarks: '' },
-      { id: 12, name: 'Bike Meter', emoji: '📊', status: null, remarks: '' },
+      { id: 10, name: 'Right View Mirror', emoji: '🪞', status: null, remarks: '' }
     ],
     lights: [
       { id: 1, name: 'Headlights - Main & Low Beam', emoji: '💡', status: null, remarks: '' },
@@ -2132,7 +2127,7 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
       { id: 3, name: 'Indicator - Front Right', emoji: '➡️', status: null, remarks: '' },
       { id: 4, name: 'Indicator - Back Left', emoji: '↙️', status: null, remarks: '' },
       { id: 5, name: 'Indicator - Back Right', emoji: '↘️', status: null, remarks: '' },
-      { id: 6, name: 'Brake Lights', emoji: '🔴', status: null, remarks: '' },
+      { id: 6, name: 'Brake Lights', emoji: '🔴', status: null, remarks: '' }
     ],
     hygiene: [
       { id: 1, name: 'Clean Uniform', emoji: '👕', status: null, remarks: '' },
@@ -2142,98 +2137,62 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
       { id: 5, name: 'JJ Rider Cap', emoji: '🧢', status: null, remarks: '' },
       { id: 6, name: 'Mid-Calf Socks', emoji: '🧦', status: null, remarks: '' },
       { id: 7, name: 'Black Clean Shoes', emoji: '👞', status: null, remarks: '' },
-      { id: 8, name: 'JJ Jacket (As Per Season)', emoji: '🧥', status: null, remarks: '', hasJacket: false },
-    ],
+      { id: 8, name: 'JJ Jacket (As Per Season)', emoji: '🧥', status: null, remarks: '', hasJacket: false }
+    ]
   });
 
-  // keep basicInfo.employeeType and branch in sync with state / user
   useEffect(() => {
-    setChecklist((prev) => ({
+    setChecklist(prev => ({
       ...prev,
       basicInfo: {
         ...prev.basicInfo,
-        employeeType,
-        branch: user.role === 'admin' ? prev.basicInfo.branch : user.branch || prev.basicInfo.branch,
-      },
-    }));
-  }, [employeeType, user.role, user.branch]);
-
-  // ---- Photo upload via ImgBB ----
-  const handlePhotoUpload = async (file, type) => {
-    try {
-      if (type === 'employee') setIsUploadingEmployee(true);
-      else setIsUploadingBike(true);
-
-      const hostedUrl = await uploadImageToImgbb(file);
-
-      if (type === 'employee') {
-        setEmployeePhoto(hostedUrl);
-      } else {
-        setBikePhoto(hostedUrl);
+        employeeType: employeeType,
+        branch: user.role === 'admin' ? prev.basicInfo.branch : user.branch
       }
-    } catch (err) {
-      console.error('Error uploading image to ImgBB', err);
-      alert('Image upload failed. Please try again.');
-    } finally {
-      if (type === 'employee') setIsUploadingEmployee(false);
-      else setIsUploadingBike(false);
+    }));
+  }, [employeeType]);
+
+  const handlePhotoUpload = (e, type) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (type === 'employee') setEmployeePhoto(reader.result);
+        else setBikePhoto(reader.result);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  // ---- Basic info handlers ----
   const handleInputChange = (field, value) => {
+    // Don't allow branch change for non-admin users
     if (field === 'branch' && user.role !== 'admin') {
-      // Non-admins cannot change branch
       return;
     }
-    setChecklist((prev) => ({
+    setChecklist(prev => ({
       ...prev,
-      basicInfo: {
-        ...prev.basicInfo,
-        [field]: value,
-      },
+      basicInfo: { ...prev.basicInfo, [field]: value }
     }));
   };
 
-  // ---- Checklist item handlers ----
   const handleCheckItem = (section, id, value) => {
-    setChecklist((prev) => ({
+    setChecklist(prev => ({
       ...prev,
-      [section]: prev[section].map((item) =>
+      [section]: prev[section].map(item =>
         item.id === id ? { ...item, status: value } : item
-      ),
+      )
     }));
   };
 
   const handleRemarks = (section, id, field, value) => {
-    setChecklist((prev) => ({
+    setChecklist(prev => ({
       ...prev,
-      [section]: prev[section].map((item) =>
+      [section]: prev[section].map(item =>
         item.id === id ? { ...item, [field]: value } : item
-      ),
+      )
     }));
   };
 
-  // toggle whether certain conditional items are required
-  const toggleGatePassRequired = (value) => {
-    setChecklist((prev) => ({
-      ...prev,
-      documents: prev.documents.map((item) =>
-        item.name === 'Society Gate Passes' ? { ...item, hasGatePass: value } : item
-      ),
-    }));
-  };
-
-  const toggleJacketRequired = (value) => {
-    setChecklist((prev) => ({
-      ...prev,
-      hygiene: prev.hygiene.map((item) =>
-        item.name === 'JJ Jacket (As Per Season)' ? { ...item, hasJacket: value } : item
-      ),
-    }));
-  };
-
-  // ---- Completion stats ----
   const getCompletionStats = () => {
     const sections = ['hygiene'];
     if (employeeType === 'rider') {
@@ -2243,577 +2202,551 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
     let total = 0;
     let completed = 0;
 
-    // basic info fields that must be filled
-    const basicFields = ['branch', 'date', 'shift', 'employeeName', 'employeeId', 'managerType', 'objective'];
+    // Count basic info fields
+    const basicFields = ['branch', 'date', 'shift', 'employeeName', 'employeeId', 'managerType'];
 
-    basicFields.forEach((field) => {
+    basicFields.forEach(field => {
       total++;
-      if (checklist.basicInfo[field] && checklist.basicInfo[field].toString().trim() !== '') {
-        completed++;
-      }
+      if (checklist.basicInfo[field]) completed++;
     });
 
-    // Each checklist item (with conditional logic)
-    sections.forEach((section) => {
+    // Count checklist items
+    sections.forEach(section => {
       if (checklist[section]) {
-        checklist[section].forEach((item) => {
+        checklist[section].forEach(item => {
           if (item.name === 'Society Gate Passes' && !item.hasGatePass) return;
           if (item.name === 'JJ Jacket (As Per Season)' && !item.hasJacket) return;
           if (employeeType !== 'rider' && item.name === 'JJ Rider Cap') return;
-
           total++;
           if (item.status !== null) completed++;
         });
       }
     });
 
-    // Photos: for riders both photos required, otherwise only employee photo
+    // Count photos
     if (employeeType === 'rider') {
-      total += 2;
+      total += 2; // employee photo + bike photo
       if (employeePhoto) completed++;
       if (bikePhoto) completed++;
     } else {
-      total += 1;
+      total += 1; // employee photo only
       if (employeePhoto) completed++;
     }
 
     return { completed, total };
   };
 
-  const handleSubmitForm = async () => {
-    const statsNow = getCompletionStats();
-    if (statsNow.completed !== statsNow.total) {
-      alert('⚠️ Please complete all required fields before submitting the checklist.');
+  const handleSubmitForm = () => {
+    const stats = getCompletionStats();
+    if (stats.completed !== stats.total) {
+      alert('Please complete all required fields before submitting.');
       return;
     }
 
-    const payload = {
-      ...checklist,
-      basicInfo: {
-        ...checklist.basicInfo,
-        employeeType,
-      },
-      employeePhoto,
-      bikePhoto,
-    };
-
-    try {
-      // 1. Save to in-memory DB
-      const result = Database.saveChecklist(payload, user.username);
-
-      // 2. Save checklist to Supabase
-      try {
-        await supabase.from('checklists').insert([
-          {
-            data: {
-              ...payload,
-              savedBy: user.username,
-              savedAt: new Date().toISOString(),
-            },
-          },
-        ]);
-      } catch (dbError) {
-        console.error('Supabase insert failed (checklists)', dbError);
-      }
-
-      // 3. Save user progress to Supabase (if available in Database.users)
-      try {
-        const profile = Database.users[user.username.toLowerCase()];
-        if (profile) {
-          await supabase.from('user_progress').upsert([
-            {
-              username: user.username.toLowerCase(),
-              points: profile.points,
-              level: profile.level,
-              streak: profile.streak,
-              last_check_date: profile.lastCheckDate || null,
-            },
-          ]);
-        }
-      } catch (progressError) {
-        console.error('Supabase upsert failed (user_progress)', progressError);
-      }
-
-      setEarnedPoints(result.points || 0);
+    const result = Database.saveChecklist(
+      { ...checklist, employeePhoto, bikePhoto },
+      user.username
+    );
+    if (result.success) {
+      setEarnedPoints(result.points);
       setShowSuccess(true);
-
       setTimeout(() => {
         setShowSuccess(false);
-        onSubmit(); // go back to dashboard / refresh
+        onSubmit();
       }, 3000);
-    } catch (err) {
-      console.error(err);
-      alert('Something went wrong while saving the checklist.');
     }
   };
 
   const stats = getCompletionStats();
-
-  // hygiene display: hide JJ Rider Cap for non-rider
-  const hygieneDisplayItems =
-    employeeType === 'rider'
-      ? checklist.hygiene
-      : checklist.hygiene.filter((item) => item.name !== 'JJ Rider Cap');
+  const progressPercent = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'} p-4`}>
-      <AnimatedBackground darkMode={darkMode} />
-
-      {/* twinkle animation used in success modal */}
-      <style>{`
-        @keyframes twinkle {
-          0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
-          50% { opacity: 1; transform: scale(1) rotate(180deg); }
-        }
-        .animate-twinkle {
-          animation: twinkle 3s infinite;
-        }
-      `}</style>
-
-      {/* success overlay */}
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'} p-4`}>
       {showSuccess && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50">
           <div
-            className={`${
-              darkMode ? 'bg-gray-800' : 'bg-white'
-            } rounded-2xl p-8 max-w-md text-center relative overflow-hidden`}
+            className={`${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
+              } rounded-xl p-6 max-w-sm w-full text-center shadow-lg`}
           >
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              {[...Array(20)].map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute text-yellow-400 animate-twinkle"
-                  style={{
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
-                    animationDelay: `${Math.random() * 2}s`,
-                    fontSize: `${Math.random() * 20 + 10}px`,
-                  }}
-                >
-                  ✨
-                </div>
-              ))}
-            </div>
-            <div className="relative z-10">
-              <div className="text-6xl mb-4">🎉✨🏆</div>
-              <h2 className={`text-2xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Inspection Complete!
-              </h2>
-              <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'} mb-4`}>
-                Great work! You just earned:
-              </p>
-              <div className="text-5xl font-bold text-blue-500 mb-4">+{earnedPoints} XP ⚡</div>
-              <p className="text-sm text-gray-400">Redirecting to dashboard...</p>
-            </div>
+            <h2 className="text-xl font-semibold mb-2">Inspection Complete</h2>
+            <p className="mb-4">You earned {earnedPoints} XP.</p>
+            <p className="text-sm text-gray-500">
+              You will be redirected to the dashboard shortly.
+            </p>
           </div>
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto relative z-10">
+      <div className="max-w-4xl mx-auto">
         <button
           onClick={() => onNavigate('dashboard')}
-          className="mb-4 text-blue-500 hover:text-blue-700 flex items-center gap-2 font-medium"
+          className="mb-4 text-sm text-blue-600 hover:underline"
         >
           ← Back to Dashboard
         </button>
 
         <div
-          className={`${
-            darkMode ? 'bg-gray-800/90' : 'bg-white'
-          } backdrop-blur-xl rounded-2xl shadow-lg p-6 md:p-8`}
+          className={`${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
+            } rounded-xl shadow p-6 space-y-6`}
         >
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <div>
-              <h1 className={`text-2xl md:text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                🚦 Employee Inspection Checklist
-              </h1>
-              <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'} mt-1 text-sm md:text-base`}>
-                Daily readiness check for riders and in-store team. Fill all sections and upload photos.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  employeeType === 'rider'
-                    ? 'bg-blue-500 text-white'
-                    : darkMode
-                    ? 'bg-gray-700 text-gray-200'
-                    : 'bg-gray-100 text-gray-700'
-                } cursor-pointer`}
-                onClick={() => setEmployeeType('rider')}
-              >
-                🛵 Rider
-              </span>
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  employeeType !== 'rider'
-                    ? 'bg-purple-500 text-white'
-                    : darkMode
-                    ? 'bg-gray-700 text-gray-200'
-                    : 'bg-gray-100 text-gray-700'
-                } cursor-pointer`}
-                onClick={() => setEmployeeType('other')}
-              >
-                🧑‍🍳 Other Staff
-              </span>
+          <h1 className="text-2xl font-bold">Employee Inspection Checklist</h1>
+
+          {/* Employee Type Selection */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Employee Type</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { type: 'rider', label: 'Rider', icon: '🏍️' },
+                { type: 'crew', label: 'Crew', icon: '👨‍🍳' },
+                { type: 'manager', label: 'Manager', icon: '👔' }
+              ].map(option => (
+                <button
+                  key={option.type}
+                  type="button"
+                  onClick={() => setEmployeeType(option.type)}
+                  className={`px-3 py-1.5 rounded-full text-sm border flex items-center gap-1
+                    ${employeeType === option.type
+                      ? darkMode
+                        ? 'bg-blue-600 border-blue-500 text-white'
+                        : 'bg-blue-600 border-blue-600 text-white'
+                      : darkMode
+                        ? 'border-gray-600 text-gray-200'
+                        : 'border-gray-300 text-gray-700'
+                    }`}
+                >
+                  <span>{option.icon}</span>
+                  <span>{option.label}</span>
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* BASIC INFO */}
-          <div className={`mb-6 rounded-xl p-4 ${darkMode ? 'bg-gray-900/60' : 'bg-gray-50'}`}>
-            <h2 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              1️⃣ Basic Information
-            </h2>
+          {/* Basic Info */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Inspection Details</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Branch */}
               <div>
-                <label
-                  className={`block text-sm font-medium mb-1 ${
-                    darkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}
-                >
-                  Branch
+                <label className="block text-sm font-medium mb-1">Branch *</label>
+                {user.role === 'admin' ? (
+                  <select
+                    value={checklist.basicInfo.branch}
+                    onChange={e => handleInputChange('branch', e.target.value)}
+                    className={`w-full px-3 py-2 rounded border text-sm
+                      ${darkMode
+                        ? 'bg-gray-900 border-gray-700 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                  >
+                    <option value="">Select Branch</option>
+                    {Database.branches.map(b => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={user.branch}
+                    readOnly
+                    className={`w-full px-3 py-2 rounded border text-sm
+                      ${darkMode
+                        ? 'bg-gray-900 border-gray-700 text-gray-200'
+                        : 'bg-gray-50 border-gray-300 text-gray-900'
+                      }`}
+                  />
+                )}
+              </div>
+
+              {/* Manager */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Inspected By (Manager) *
                 </label>
-                <input
-                  type="text"
-                  value={checklist.basicInfo.branch}
-                  onChange={(e) => handleInputChange('branch', e.target.value)}
-                  readOnly={user.role !== 'admin'}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm ${
-                    darkMode
-                      ? 'bg-gray-800 border-gray-700 text-gray-100'
+                <select
+                  value={checklist.basicInfo.managerType}
+                  onChange={e => handleInputChange('managerType', e.target.value)}
+                  className={`w-full px-3 py-2 rounded border text-sm
+                    ${darkMode
+                      ? 'bg-gray-900 border-gray-700 text-white'
                       : 'bg-white border-gray-300 text-gray-900'
-                  } ${user.role !== 'admin' ? 'opacity-80 cursor-not-allowed' : ''}`}
-                  placeholder="Enter branch"
-                />
+                    }`}
+                >
+                  <option value="">Select Manager Designation</option>
+                  <option value="DFPL Morning">DFPL Morning</option>
+                  <option value="DFPL Night">DFPL Night</option>
+                  <option value="BOH Morning">BOH Morning</option>
+                  <option value="BOH Night">BOH Night</option>
+                  <option value="FOH Morning">FOH Morning</option>
+                  <option value="FOH Night">FOH Night</option>
+                  <option value="ABL">ABL</option>
+                  <option value="BL">BL</option>
+                  <option value="Auditor">Auditor</option>
+                </select>
               </div>
 
               {/* Date */}
               <div>
-                <label
-                  className={`block text-sm font-medium mb-1 ${
-                    darkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}
-                >
-                  Date
-                </label>
+                <label className="block text-sm font-medium mb-1">Inspection Date</label>
                 <input
                   type="date"
                   value={checklist.basicInfo.date}
-                  onChange={(e) => handleInputChange('date', e.target.value)}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm ${
-                    darkMode
-                      ? 'bg-gray-800 border-gray-700 text-gray-100'
+                  onChange={e => handleInputChange('date', e.target.value)}
+                  className={`w-full px-3 py-2 rounded border text-sm
+                    ${darkMode
+                      ? 'bg-gray-900 border-gray-700 text-white'
                       : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                    }`}
                 />
               </div>
 
               {/* Shift */}
               <div>
-                <label
-                  className={`block text-sm font-medium mb-1 ${
-                    darkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}
-                >
-                  Shift
-                </label>
+                <label className="block text-sm font-medium mb-1">Shift</label>
                 <select
                   value={checklist.basicInfo.shift}
-                  onChange={(e) => handleInputChange('shift', e.target.value)}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm ${
-                    darkMode
-                      ? 'bg-gray-800 border-gray-700 text-gray-100'
+                  onChange={e => handleInputChange('shift', e.target.value)}
+                  className={`w-full px-3 py-2 rounded border text-sm
+                    ${darkMode
+                      ? 'bg-gray-900 border-gray-700 text-white'
                       : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                    }`}
                 >
-                  <option value="">Select shift</option>
-                  <option value="Morning">Morning</option>
-                  <option value="Evening">Evening</option>
-                  <option value="Night">Night</option>
-                  <option value="Full Day">Full Day</option>
-                </select>
-              </div>
-
-              {/* Manager Type */}
-              <div>
-                <label
-                  className={`block text-sm font-medium mb-1 ${
-                    darkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}
-                >
-                  Manager / Inspector Role
-                </label>
-                <select
-                  value={checklist.basicInfo.managerType}
-                  onChange={(e) => handleInputChange('managerType', e.target.value)}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm ${
-                    darkMode
-                      ? 'bg-gray-800 border-gray-700 text-gray-100'
-                      : 'bg-white border-gray-300 text-gray-900'
-                  }`}
-                >
-                  <option value="">Select role</option>
-                  <option value="Shift Manager">Shift Manager</option>
-                  <option value="Assistant Manager">Assistant Manager</option>
-                  <option value="Branch Lead">Branch Lead</option>
-                  <option value="Training Manager">Training Manager</option>
-                  <option value="Rider Captain">Rider Captain</option>
-                  <option value="Other">Other</option>
+                  <option value="">Select Shift</option>
+                  <option value="A">Shift A (Morning)</option>
+                  <option value="B">Shift B (Evening)</option>
                 </select>
               </div>
 
               {/* Employee Name */}
               <div>
-                <label
-                  className={`block text-sm font-medium mb-1 ${
-                    darkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}
-                >
-                  Employee Name
-                </label>
+                <label className="block text-sm font-medium mb-1">Employee Name</label>
                 <input
                   type="text"
                   value={checklist.basicInfo.employeeName}
-                  onChange={(e) => handleInputChange('employeeName', e.target.value)}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm ${
-                    darkMode
-                      ? 'bg-gray-800 border-gray-700 text-gray-100'
+                  onChange={e => handleInputChange('employeeName', e.target.value)}
+                  className={`w-full px-3 py-2 rounded border text-sm
+                    ${darkMode
+                      ? 'bg-gray-900 border-gray-700 text-white'
                       : 'bg-white border-gray-300 text-gray-900'
-                  }`}
-                  placeholder="Full name"
+                    }`}
+                  placeholder="Enter full name"
                 />
               </div>
 
               {/* Employee ID */}
               <div>
-                <label
-                  className={`block text-sm font-medium mb-1 ${
-                    darkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}
-                >
-                  Employee ID / Code
-                </label>
+                <label className="block text-sm font-medium mb-1">Employee ID</label>
                 <input
                   type="text"
                   value={checklist.basicInfo.employeeId}
-                  onChange={(e) => handleInputChange('employeeId', e.target.value)}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm ${
-                    darkMode
-                      ? 'bg-gray-800 border-gray-700 text-gray-100'
+                  onChange={e => handleInputChange('employeeId', e.target.value)}
+                  className={`w-full px-3 py-2 rounded border text-sm
+                    ${darkMode
+                      ? 'bg-gray-900 border-gray-700 text-white'
                       : 'bg-white border-gray-300 text-gray-900'
-                  }`}
-                  placeholder="e.g. RID-023"
+                    }`}
+                  placeholder="Enter employee ID"
                 />
               </div>
             </div>
-
-            {/* Objective */}
-            <div className="mt-4">
-              <label
-                className={`block text-sm font-medium mb-1 ${
-                  darkMode ? 'text-gray-300' : 'text-gray-700'
-                }`}
-              >
-                Inspection Objective / Notes
-              </label>
-              <textarea
-                rows={3}
-                value={checklist.basicInfo.objective}
-                onChange={(e) => handleInputChange('objective', e.target.value)}
-                className={`w-full rounded-lg border px-3 py-2 text-sm ${
-                  darkMode
-                    ? 'bg-gray-800 border-gray-700 text-gray-100'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
-                placeholder="e.g. Pre-dinner rush readiness, SOP refresh, hygiene spot-check..."
-              />
-            </div>
           </div>
 
-          {/* PHOTOS */}
-          <div className="mb-6">
-            <h2 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              2️⃣ Photos
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Branch overview */}
+          {checklist.basicInfo.shift && checklist.basicInfo.branch && (
+            <div
+              className={`rounded-lg border p-4 text-sm
+                ${darkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'}
+              `}
+            >
+              <h3 className="font-semibold mb-2">
+                Branch Overview - {employeeType.toUpperCase()}
+              </h3>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Total {employeeType}s in branch:</span>
+                  <span className="font-semibold">
+                    {Database.getStaffConfig(checklist.basicInfo.branch, employeeType).total}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                  <div>
+                    <p>Working</p>
+                    <p className="font-semibold">
+                      {
+                        Database.getStaffConfig(
+                          checklist.basicInfo.branch,
+                          employeeType
+                        )[`shift${checklist.basicInfo.shift}`].count
+                      }
+                    </p>
+                  </div>
+                  <div>
+                    <p>Day Off</p>
+                    <p className="font-semibold">
+                      {
+                        Database.getStaffConfig(
+                          checklist.basicInfo.branch,
+                          employeeType
+                        )[`shift${checklist.basicInfo.shift}`].dayOff
+                      }
+                    </p>
+                  </div>
+                  <div>
+                    <p>No Show</p>
+                    <p className="font-semibold">
+                      {
+                        Database.getStaffConfig(
+                          checklist.basicInfo.branch,
+                          employeeType
+                        )[`shift${checklist.basicInfo.shift}`].noShow
+                      }
+                    </p>
+                  </div>
+                  <div>
+                    <p>Medical</p>
+                    <p className="font-semibold">
+                      {
+                        Database.getStaffConfig(
+                          checklist.basicInfo.branch,
+                          employeeType
+                        )[`shift${checklist.basicInfo.shift}`].medical
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                {(() => {
+                  const today = new Date().toISOString().split('T')[0];
+                  const todayChecklists = Database.checklists.filter(
+                    c =>
+                      c.basicInfo.branch === checklist.basicInfo.branch &&
+                      c.basicInfo.date === today &&
+                      c.basicInfo.shift === checklist.basicInfo.shift &&
+                      c.basicInfo.employeeType === employeeType
+                  );
+                  const expectedWorking = Database.getStaffConfig(
+                    checklist.basicInfo.branch,
+                    employeeType
+                  )[`${'shift'}${checklist.basicInfo.shift}`].count;
+                  const completed = todayChecklists.length;
+                  const pending = Math.max(0, expectedWorking - completed);
+                  const width =
+                    expectedWorking > 0
+                      ? Math.min(100, (completed / expectedWorking) * 100)
+                      : 0;
+
+                  return (
+                    <div className="mt-3">
+                      <div className="flex justify-between mb-1">
+                        <span>Checklists Completed</span>
+                        <span className="font-semibold">
+                          {completed} / {expectedWorking}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-300 h-2 rounded-full">
+                        <div
+                          className="bg-blue-500 h-2 rounded-full"
+                          style={{ width: `${width}%` }}
+                        />
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {pending > 0
+                          ? `${pending} ${employeeType}(s) pending inspection`
+                          : 'All inspections completed.'}
+                      </p>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* Photos */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <PhotoUpload
+              label="Employee Photo"
+              photo={employeePhoto}
+              handleUpload={e => handlePhotoUpload(e, 'employee')}
+              darkMode={darkMode}
+            />
+            {employeeType === 'rider' && (
               <PhotoUpload
-                label={isUploadingEmployee ? 'Employee Photo (Uploading...)' : 'Employee Photo'}
-                photo={employeePhoto}
-                handleUpload={(file) => handlePhotoUpload(file, 'employee')}
+                label="Bike Photo"
+                photo={bikePhoto}
+                handleUpload={e => handlePhotoUpload(e, 'bike')}
                 darkMode={darkMode}
               />
-              {employeeType === 'rider' && (
-                <PhotoUpload
-                  label={isUploadingBike ? 'Bike Photo (Uploading...)' : 'Bike Photo'}
-                  photo={bikePhoto}
-                  handleUpload={(file) => handlePhotoUpload(file, 'bike')}
-                  darkMode={darkMode}
-                />
-              )}
-            </div>
+            )}
           </div>
 
-          {/* RIDER-ONLY SECTIONS */}
+          {/* Rider-only sections */}
           {employeeType === 'rider' && (
             <>
-              {/* Safety + Documents */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <ChecklistSection
-                  title="3️⃣ Rider Safety Gear"
-                  description="Helmet, working phone, safe guard and basic rider protection."
-                  icon="🛡️"
-                  items={checklist.safetyChecks}
-                  sectionKey="safetyChecks"
-                  onCheck={handleCheckItem}
-                  onRemarks={handleRemarks}
-                  darkMode={darkMode}
-                  employeeType={employeeType}
-                />
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h2
-                      className={`text-base font-semibold ${
-                        darkMode ? 'text-white' : 'text-gray-900'
-                      }`}
-                    >
-                      4️⃣ Documents
-                    </h2>
-                    <label className="flex items-center gap-2 text-xs md:text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={
-                          checklist.documents.find(
-                            (d) => d.name === 'Society Gate Passes'
-                          )?.hasGatePass || false
-                        }
-                        onChange={(e) => toggleGatePassRequired(e.target.checked)}
-                        className="rounded border-gray-400"
-                      />
-                      <span className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
-                        Society Gate Pass required?
-                      </span>
-                    </label>
-                  </div>
-                  <ChecklistSection
-                    title="Documents"
-                    description="License, registration, CNIC and gate passes where applicable."
-                    icon="📄"
-                    items={checklist.documents}
-                    sectionKey="documents"
-                    onCheck={handleCheckItem}
-                    onRemarks={handleRemarks}
-                    darkMode={darkMode}
-                    employeeType={employeeType}
-                  />
-                </div>
-              </div>
-
-              {/* Bike + Lights */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <ChecklistSection
-                  title="5️⃣ Bike Inspection"
-                  description="Basic bike health: tyres, brakes, cleanliness, mirrors and horn."
-                  icon="🛵"
-                  items={checklist.bikeInspection}
-                  sectionKey="bikeInspection"
-                  onCheck={handleCheckItem}
-                  onRemarks={handleRemarks}
-                  darkMode={darkMode}
-                  employeeType={employeeType}
-                />
-                <ChecklistSection
-                  title="6️⃣ Lights & Indicators"
-                  description="Headlights, indicators and brake lights for safe night riding."
-                  icon="💡"
-                  items={checklist.lights}
-                  sectionKey="lights"
-                  onCheck={handleCheckItem}
-                  onRemarks={handleRemarks}
-                  darkMode={darkMode}
-                  employeeType={employeeType}
-                />
-              </div>
+              <ChecklistSection
+                title="Safety Checks"
+                items={checklist.safetyChecks}
+                section="safetyChecks"
+                handleCheck={handleCheckItem}
+                handleRemarks={handleRemarks}
+                objective="Ensure rider has all required safety equipment."
+                emoji="🛡️"
+                darkMode={darkMode}
+              />
+              <ChecklistSection
+                title="Required Documents"
+                items={checklist.documents}
+                section="documents"
+                handleCheck={handleCheckItem}
+                handleRemarks={handleRemarks}
+                objective="Verify all necessary documentation is present (Original Documents)."
+                emoji="📄"
+                darkMode={darkMode}
+              />
+              <ChecklistSection
+                title="Bike Inspection"
+                items={checklist.bikeInspection}
+                section="bikeInspection"
+                handleCheck={handleCheckItem}
+                handleRemarks={handleRemarks}
+                objective="Check vehicle condition and functionality."
+                emoji="🏍️"
+                darkMode={darkMode}
+              />
+              <ChecklistSection
+                title="Lights Check"
+                items={checklist.lights}
+                section="lights"
+                handleCheck={handleCheckItem}
+                handleRemarks={handleRemarks}
+                objective="Ensure all lights work properly."
+                emoji="💡"
+                darkMode={darkMode}
+              />
             </>
           )}
 
-          {/* HYGIENE */}
-          <div className={`mb-6 rounded-xl p-4 ${darkMode ? 'bg-gray-900/60' : 'bg-gray-50'}`}>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                {employeeType === 'rider' ? '7️⃣ Hygiene & Grooming' : '3️⃣ Hygiene & Grooming'}
-              </h2>
-              <label className="flex items-center gap-2 text-xs md:text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={
-                    checklist.hygiene.find(
-                      (h) => h.name === 'JJ Jacket (As Per Season)'
-                    )?.hasJacket || false
-                  }
-                  onChange={(e) => toggleJacketRequired(e.target.checked)}
-                  className="rounded border-gray-400"
-                />
-                <span className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
-                  Jacket required today?
-                </span>
-              </label>
-            </div>
+          {/* Hygiene */}
+          <ChecklistSection
+            title="Personal Hygiene"
+            items={checklist.hygiene.filter(
+              item => employeeType === 'rider' || item.name !== 'JJ Rider Cap'
+            )}
+            section="hygiene"
+            handleCheck={handleCheckItem}
+            handleRemarks={handleRemarks}
+            objective="Verify professional appearance standards."
+            emoji="✨"
+            darkMode={darkMode}
+          />
 
-            <ChecklistSection
-              title="Hygiene & Uniform"
-              description="Uniform, grooming, name tag and footwear as per JJ standards."
-              icon="🧼"
-              items={hygieneDisplayItems}
-              sectionKey="hygiene"
-              onCheck={handleCheckItem}
-              onRemarks={handleRemarks}
-              darkMode={darkMode}
-              employeeType={employeeType}
-            />
-          </div>
-
-          {/* PROGRESS + SUBMIT */}
-          <div className={`${darkMode ? 'bg-gray-900/60' : 'bg-gray-50'} p-4 rounded-xl`}>
-            <div className="flex justify-between items-center mb-3">
-              <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                📊 Progress: {stats.completed}/{stats.total}
+          {/* Progress & Submit */}
+          <div
+            className={`mt-4 rounded-lg p-4 text-sm ${
+              darkMode ? 'bg-gray-900' : 'bg-gray-50'
+            }`}
+          >
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-medium">
+                Progress: {stats.completed}/{stats.total}
               </span>
-              <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                {stats.total > 0
-                  ? `${Math.round((stats.completed / stats.total) * 100)}% complete`
-                  : '0% complete'}
+              <span className="text-xs text-gray-500">
+                {progressPercent.toFixed(0)}% complete
               </span>
             </div>
-            <div className="w-full bg-gray-300 rounded-full h-3 mb-3 overflow-hidden">
+            <div className="w-full bg-gray-300 h-3 rounded-full mb-3">
               <div
-                className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-500"
-                style={{
-                  width:
-                    stats.total > 0
-                      ? `${Math.min(100, (stats.completed / stats.total) * 100)}%`
-                      : '0%',
-                }}
+                className="bg-blue-500 h-3 rounded-full"
+                style={{ width: `${progressPercent}%` }}
               />
             </div>
-            {stats.completed !== stats.total && (
-              <p className={`text-xs mb-3 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                ✅ Fill all required fields, checklists and photos to enable the submit button.
-              </p>
+
+            {stats.completed < stats.total && (
+              <div
+                className={`mb-3 rounded border px-3 py-2 text-xs ${
+                  darkMode
+                    ? 'bg-yellow-900/30 border-yellow-700 text-yellow-200'
+                    : 'bg-yellow-50 border-yellow-200 text-yellow-800'
+                }`}
+              >
+                <p className="font-semibold mb-1">
+                  Please complete all required fields:
+                </p>
+                <ul className="list-disc ml-4 space-y-0.5">
+                  {!checklist.basicInfo.branch && <li>Select Branch</li>}
+                  {!checklist.basicInfo.managerType && (
+                    <li>Select Manager Designation</li>
+                  )}
+                  {!checklist.basicInfo.shift && <li>Select Shift</li>}
+                  {!checklist.basicInfo.employeeName && (
+                    <li>Enter Employee Name</li>
+                  )}
+                  {!checklist.basicInfo.employeeId && (
+                    <li>Enter Employee ID</li>
+                  )}
+                  {!employeePhoto && <li>Upload Employee Photo</li>}
+                  {employeeType === 'rider' && !bikePhoto && (
+                    <li>Upload Bike Photo</li>
+                  )}
+                  {(() => {
+                    const sections = ['hygiene'];
+                    if (employeeType === 'rider') {
+                      sections.unshift(
+                        'safetyChecks',
+                        'documents',
+                        'bikeInspection',
+                        'lights'
+                      );
+                    }
+                    let incompleteItems = [];
+                    sections.forEach(section => {
+                      if (checklist[section]) {
+                        checklist[section].forEach(item => {
+                          if (
+                            item.name === 'Society Gate Passes' &&
+                            !item.hasGatePass
+                          )
+                            return;
+                          if (
+                            item.name === 'JJ Jacket (As Per Season)' &&
+                            !item.hasJacket
+                          )
+                            return;
+                          if (
+                            employeeType !== 'rider' &&
+                            item.name === 'JJ Rider Cap'
+                          )
+                            return;
+                          if (item.status === null) {
+                            incompleteItems.push(item.name);
+                          }
+                        });
+                      }
+                    });
+                    return incompleteItems.slice(0, 5).map((name, i) => (
+                      <li key={i}>Check: {name}</li>
+                    ));
+                  })()}
+                </ul>
+              </div>
             )}
 
             <button
               onClick={handleSubmitForm}
               disabled={stats.completed !== stats.total}
-              className={`w-full p-3 rounded-xl flex items-center justify-center gap-2 font-semibold transition-all transform ${
-                stats.completed === stats.total
-                  ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:scale-105'
-                  : 'bg-gray-300 text-gray-600 cursor-not-allowed'
-              }`}
+              className={`w-full mt-2 inline-flex items-center justify-center gap-2 px-4 py-2 rounded text-sm font-semibold
+                ${
+                  stats.completed === stats.total
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                }`}
             >
-              <Save size={20} />
-              {stats.completed === stats.total ? 'Submit Checklist' : 'Complete All Fields to Submit'}
+              <Save size={18} />
+              {stats.completed === stats.total
+                ? 'Submit Checklist'
+                : 'Complete all fields to submit'}
             </button>
           </div>
         </div>
