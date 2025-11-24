@@ -1522,141 +1522,36 @@ const Dashboard = ({ onNavigate, stats, user, onLogout, darkMode, toggleDarkMode
   );
 };
 
-const PhotoUpload = ({ label, photo, handleUpload, darkMode }) => {
-  const fileInputRef = React.useRef(null);
-  const cameraInputRef = React.useRef(null);
-  
-  const triggerFileInput = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-      fileInputRef.current.click();
-    }
-  };
-
-  const triggerCameraInput = () => {
-    if (cameraInputRef.current) {
-      cameraInputRef.current.value = '';
-      cameraInputRef.current.click();
-    }
-  };
-
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      // 👉 pass the File object up to the parent
-      handleUpload(file);
-    }
-  };
+const PhotoUpload = ({ label, photo, onChange, darkMode }) => {
+  const inputId = label.toLowerCase().replace(/\s+/g, '-') + '-upload';
 
   return (
-    <div>
-      <label className={`block text-sm mb-2 font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-        📸 {label}
+    <div
+      className={`border rounded-lg p-4 text-sm ${
+        darkMode ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-200 text-gray-900'
+      }`}
+    >
+      <label htmlFor={inputId} className="block font-medium mb-2">
+        {label}
       </label>
-      <div
-        className={`border-2 border-dashed ${
-          darkMode ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-gray-50'
-        } rounded-xl aspect-square max-h-64 flex items-center justify-center relative overflow-hidden transition-all hover:border-blue-500`}
-      >
-        {/* Gallery File Input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          style={{
-            position: 'absolute',
-            width: '1px',
-            height: '1px',
-            opacity: 0,
-            overflow: 'hidden',
-            zIndex: -1,
-          }}
-        />
 
-        {/* Camera File Input */}
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={handleFileChange}
-          style={{
-            position: 'absolute',
-            width: '1px',
-            height: '1px',
-            opacity: 0,
-            overflow: 'hidden',
-            zIndex: -1,
-          }}
-        />
+      {photo && (
+        <div className="mb-2">
+          <img
+            src={photo}
+            alt={label}
+            className="w-full h-40 object-cover rounded"
+          />
+        </div>
+      )}
 
-        {photo ? (
-          <div className="relative w-full h-full group">
-            <img src={photo} alt={label} className="w-full h-full object-contain p-2" />
-            <div className="absolute bottom-2 left-2 right-2 flex gap-2">
-              <button
-                onClick={triggerCameraInput}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  triggerCameraInput();
-                }}
-                className="flex-1 px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm rounded-lg font-medium active:from-blue-600 active:to-purple-600 cursor-pointer select-none transform hover:scale-105 transition-all shadow-lg"
-                style={{ WebkitTapHighlightColor: 'transparent', userSelect: 'none' }}
-              >
-                📸 Camera
-              </button>
-              <button
-                onClick={triggerFileInput}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  triggerFileInput();
-                }}
-                className="flex-1 px-3 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-white text-sm rounded-lg font-medium active:from-green-600 active:to-teal-600 cursor-pointer select-none transform hover:scale-105 transition-all shadow-lg"
-                style={{ WebkitTapHighlightColor: 'transparent', userSelect: 'none' }}
-              >
-                🖼️ Gallery
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center p-4 w-full">
-            <Camera
-              className={`h-12 w-12 ${darkMode ? 'text-gray-500' : 'text-gray-400'} mx-auto mb-4 animate-pulse`}
-            />
-            <p className={`text-sm font-medium mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              📷 Choose photo source
-            </p>
-            <div className="flex gap-2 max-w-xs mx-auto">
-              <button
-                onClick={triggerCameraInput}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  triggerCameraInput();
-                }}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm rounded-lg active:from-blue-600 active:to-purple-600 font-medium shadow-lg cursor-pointer select-none transform hover:scale-105 transition-all"
-                style={{ WebkitTapHighlightColor: 'transparent', userSelect: 'none' }}
-              >
-                📸 Camera
-              </button>
-              <button
-                onClick={triggerFileInput}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  triggerFileInput();
-                }}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-teal-500 text-white text-sm rounded-lg active:from-green-600 active:to-teal-600 font-medium shadow-lg cursor-pointer select-none transform hover:scale-105 transition-all"
-                style={{ WebkitTapHighlightColor: 'transparent', userSelect: 'none' }}
-              >
-                🖼️ Gallery
-              </button>
-            </div>
-            <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'} mt-3 select-none`}>
-              📷 Take a new photo or 🖼️ choose from gallery
-            </p>
-          </div>
-        )}
-      </div>
+      <input
+        id={inputId}
+        type="file"
+        accept="image/*"
+        onChange={onChange}
+        className="block w-full text-xs"
+      />
     </div>
   );
 };
@@ -2153,16 +2048,20 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
   }, [employeeType]);
 
   const handlePhotoUpload = (e, type) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (type === 'employee') setEmployeePhoto(reader.result);
-        else setBikePhoto(reader.result);
-      };
-      reader.readAsDataURL(file);
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    if (type === 'employee') {
+      setEmployeePhoto(reader.result);
+    } else {
+      setBikePhoto(reader.result);
     }
   };
+  reader.readAsDataURL(file);
+};
+
 
   const handleInputChange = (field, value) => {
     // Don't allow branch change for non-admin users
@@ -2565,22 +2464,25 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
           )}
 
           {/* Photos */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <PhotoUpload
-              label="Employee Photo"
-              photo={employeePhoto}
-              handleUpload={e => handlePhotoUpload(e, 'employee')}
-              darkMode={darkMode}
-            />
-            {employeeType === 'rider' && (
-              <PhotoUpload
-                label="Bike Photo"
-                photo={bikePhoto}
-                handleUpload={e => handlePhotoUpload(e, 'bike')}
-                darkMode={darkMode}
-              />
-            )}
-          </div>
+          // inside ChecklistForm JSX
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <PhotoUpload
+    label="Employee Photo"
+    photo={employeePhoto}
+    onChange={e => handlePhotoUpload(e, 'employee')}
+    darkMode={darkMode}
+  />
+  {employeeType === 'rider' && (
+    <PhotoUpload
+      label="Bike Photo"
+      photo={bikePhoto}
+      onChange={e => handlePhotoUpload(e, 'bike')}
+      darkMode={darkMode}
+    />
+  )}
+</div>
+
 
           {/* Rider-only sections */}
           {employeeType === 'rider' && (
