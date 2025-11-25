@@ -2701,120 +2701,203 @@ const handleSubmitForm = async () => {
   </div>
 </div>
 
-          {/* Branch overview */}
-          {checklist.basicInfo.shift && checklist.basicInfo.branch && (
-            <div
-              className={`rounded-lg border p-4 text-sm
-                ${darkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'}
-              `}
-            >
-              <h3 className="font-semibold mb-2">
-                Branch Overview - {employeeType.toUpperCase()}
-              </h3>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Total {employeeType}s in branch:</span>
-                  <span className="font-semibold">
-                    {Database.getStaffConfig(checklist.basicInfo.branch, employeeType).total}
-                  </span>
+          {/* Branch overview - UPDATED WITH MODERN STYLING */}
+{checklist.basicInfo.shift && checklist.basicInfo.branch && (
+  <div className={`${darkMode ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200'} rounded-3xl border-2 p-6 mb-6 shadow-2xl overflow-hidden relative`}>
+    {/* Decorative Elements */}
+    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full blur-3xl"></div>
+    <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-green-500/10 to-yellow-500/10 rounded-full blur-3xl"></div>
+    
+    <div className="relative z-10">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-xl ${
+            darkMode ? 'bg-gradient-to-br from-blue-600 to-purple-600' : 'bg-gradient-to-br from-blue-400 to-purple-400'
+          }`}>
+            📊
+          </div>
+          <div>
+            <h3 className={`text-lg font-black ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Branch Overview - {employeeType.toUpperCase()}
+            </h3>
+            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              Real-time staff status for this shift
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Total Staff Card */}
+      <div className={`${darkMode ? 'bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-blue-700' : 'bg-gradient-to-r from-blue-100 to-purple-100 border-blue-300'} border-2 rounded-2xl p-4 mb-5 shadow-lg`}>
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${
+              darkMode ? 'bg-white/10' : 'bg-white/50'
+            }`}>
+              👥
+            </div>
+            <span className={`font-bold ${darkMode ? 'text-blue-200' : 'text-blue-900'}`}>
+              Total {employeeType}s in branch
+            </span>
+          </div>
+          <span className={`text-3xl font-black ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+            {Database.getStaffConfig(checklist.basicInfo.branch, employeeType).total}
+          </span>
+        </div>
+      </div>
+
+      {/* Status Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+        <div className={`${darkMode ? 'bg-green-900/30 border-green-700' : 'bg-green-50 border-green-200'} border-2 rounded-2xl p-4 text-center transition-all hover:shadow-lg hover:-translate-y-1`}>
+          <div className="flex justify-center mb-2">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+              darkMode ? 'bg-green-800' : 'bg-green-200'
+            }`}>
+              <span className="text-xl">✅</span>
+            </div>
+          </div>
+          <p className={`text-xs font-bold mb-1 ${darkMode ? 'text-green-200' : 'text-green-800'}`}>
+            Working
+          </p>
+          <p className={`text-3xl font-black ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
+            {Database.getStaffConfig(checklist.basicInfo.branch, employeeType)[`shift${checklist.basicInfo.shift}`].count}
+          </p>
+        </div>
+
+        <div className={`${darkMode ? 'bg-yellow-900/30 border-yellow-700' : 'bg-yellow-50 border-yellow-200'} border-2 rounded-2xl p-4 text-center transition-all hover:shadow-lg hover:-translate-y-1`}>
+          <div className="flex justify-center mb-2">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+              darkMode ? 'bg-yellow-800' : 'bg-yellow-200'
+            }`}>
+              <span className="text-xl">🌙</span>
+            </div>
+          </div>
+          <p className={`text-xs font-bold mb-1 ${darkMode ? 'text-yellow-200' : 'text-yellow-800'}`}>
+            Day Off
+          </p>
+          <p className={`text-3xl font-black ${darkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
+            {Database.getStaffConfig(checklist.basicInfo.branch, employeeType)[`shift${checklist.basicInfo.shift}`].dayOff}
+          </p>
+        </div>
+
+        <div className={`${darkMode ? 'bg-red-900/30 border-red-700' : 'bg-red-50 border-red-200'} border-2 rounded-2xl p-4 text-center transition-all hover:shadow-lg hover:-translate-y-1`}>
+          <div className="flex justify-center mb-2">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+              darkMode ? 'bg-red-800' : 'bg-red-200'
+            }`}>
+              <span className="text-xl">❌</span>
+            </div>
+          </div>
+          <p className={`text-xs font-bold mb-1 ${darkMode ? 'text-red-200' : 'text-red-800'}`}>
+            No Show
+          </p>
+          <p className={`text-3xl font-black ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
+            {Database.getStaffConfig(checklist.basicInfo.branch, employeeType)[`shift${checklist.basicInfo.shift}`].noShow}
+          </p>
+        </div>
+
+        <div className={`${darkMode ? 'bg-orange-900/30 border-orange-700' : 'bg-orange-50 border-orange-200'} border-2 rounded-2xl p-4 text-center transition-all hover:shadow-lg hover:-translate-y-1`}>
+          <div className="flex justify-center mb-2">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+              darkMode ? 'bg-orange-800' : 'bg-orange-200'
+            }`}>
+              <span className="text-xl">🏥</span>
+            </div>
+          </div>
+          <p className={`text-xs font-bold mb-1 ${darkMode ? 'text-orange-200' : 'text-orange-800'}`}>
+            Medical
+          </p>
+          <p className={`text-3xl font-black ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+            {Database.getStaffConfig(checklist.basicInfo.branch, employeeType)[`shift${checklist.basicInfo.shift}`].medical}
+          </p>
+        </div>
+      </div>
+
+      {/* Inspection Progress */}
+      {(() => {
+        const today = new Date().toISOString().split('T')[0];
+        const todayChecklists = Database.checklists.filter(
+          c =>
+            c.basicInfo.branch === checklist.basicInfo.branch &&
+            c.basicInfo.date === today &&
+            c.basicInfo.shift === checklist.basicInfo.shift &&
+            c.basicInfo.employeeType === employeeType
+        );
+        const expectedWorking = Database.getStaffConfig(
+          checklist.basicInfo.branch,
+          employeeType
+        )[`shift${checklist.basicInfo.shift}`].count;
+        const completed = todayChecklists.length;
+        const pending = Math.max(0, expectedWorking - completed);
+        const width = expectedWorking > 0 ? Math.min(100, (completed / expectedWorking) * 100) : 0;
+
+        return (
+          <div className={`${darkMode ? 'bg-gray-700/50 border-gray-600' : 'bg-white border-gray-200'} border-2 rounded-2xl p-5 shadow-lg`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                  darkMode ? 'bg-purple-900/50' : 'bg-purple-100'
+                }`}>
+                  <span className="text-lg">📋</span>
                 </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                  <div>
-                    <p>Working</p>
-                    <p className="font-semibold">
-                      {
-                        Database.getStaffConfig(
-                          checklist.basicInfo.branch,
-                          employeeType
-                        )[`shift${checklist.basicInfo.shift}`].count
-                      }
-                    </p>
-                  </div>
-                  <div>
-                    <p>Day Off</p>
-                    <p className="font-semibold">
-                      {
-                        Database.getStaffConfig(
-                          checklist.basicInfo.branch,
-                          employeeType
-                        )[`shift${checklist.basicInfo.shift}`].dayOff
-                      }
-                    </p>
-                  </div>
-                  <div>
-                    <p>No Show</p>
-                    <p className="font-semibold">
-                      {
-                        Database.getStaffConfig(
-                          checklist.basicInfo.branch,
-                          employeeType
-                        )[`shift${checklist.basicInfo.shift}`].noShow
-                      }
-                    </p>
-                  </div>
-                  <div>
-                    <p>Medical</p>
-                    <p className="font-semibold">
-                      {
-                        Database.getStaffConfig(
-                          checklist.basicInfo.branch,
-                          employeeType
-                        )[`shift${checklist.basicInfo.shift}`].medical
-                      }
-                    </p>
-                  </div>
-                </div>
-
-                {(() => {
-                  const today = new Date().toISOString().split('T')[0];
-                  const todayChecklists = Database.checklists.filter(
-                    c =>
-                      c.basicInfo.branch === checklist.basicInfo.branch &&
-                      c.basicInfo.date === today &&
-                      c.basicInfo.shift === checklist.basicInfo.shift &&
-                      c.basicInfo.employeeType === employeeType
-                  );
-                  const expectedWorking = Database.getStaffConfig(
-                    checklist.basicInfo.branch,
-                    employeeType
-                  )[`${'shift'}${checklist.basicInfo.shift}`].count;
-                  const completed = todayChecklists.length;
-                  const pending = Math.max(0, expectedWorking - completed);
-                  const width =
-                    expectedWorking > 0
-                      ? Math.min(100, (completed / expectedWorking) * 100)
-                      : 0;
-
-                  return (
-                    <div className="mt-3">
-                      <div className="flex justify-between mb-1">
-                        <span>Checklists Completed</span>
-                        <span className="font-semibold">
-                          {completed} / {expectedWorking}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-300 h-2 rounded-full">
-                        <div
-                          className="bg-blue-500 h-2 rounded-full"
-                          style={{ width: `${width}%` }}
-                        />
-                      </div>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {pending > 0
-                          ? `${pending} ${employeeType}(s) pending inspection`
-                          : 'All inspections completed.'}
-                      </p>
-                    </div>
-                  );
-                })()}
+                <span className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Checklists Completed
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-2xl font-black ${
+                  completed === expectedWorking ? 'text-green-500' : 
+                  completed > 0 ? 'text-blue-500' : 
+                  'text-gray-400'
+                }`}>
+                  {completed}
+                </span>
+                <span className={`text-lg font-bold ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  / {expectedWorking}
+                </span>
               </div>
             </div>
-          )}
 
-          {/* Photos */}
-          // inside ChecklistForm JSX
+            {/* Progress Bar */}
+            <div className={`w-full h-4 rounded-full overflow-hidden mb-3 ${
+              darkMode ? 'bg-gray-600' : 'bg-gray-200'
+            }`}>
+              <div 
+                className={`h-full rounded-full transition-all duration-1000 ${
+                  completed === expectedWorking ? 'bg-gradient-to-r from-green-500 to-green-600' :
+                  completed > 0 ? 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500' :
+                  'bg-gray-400'
+                }`}
+                style={{ width: `${width}%` }}
+              />
+            </div>
 
+            {/* Status Message */}
+            <div className={`flex items-center gap-2 p-3 rounded-xl ${
+              pending > 0 ? 
+                darkMode ? 'bg-yellow-900/30 border border-yellow-700' : 'bg-yellow-50 border border-yellow-200'
+                : darkMode ? 'bg-green-900/30 border border-green-700' : 'bg-green-50 border border-green-200'
+            }`}>
+              <span className="text-xl">
+                {pending > 0 ? '⏳' : '✅'}
+              </span>
+              <p className={`text-sm font-bold ${
+                pending > 0 ? 
+                  darkMode ? 'text-yellow-200' : 'text-yellow-800'
+                  : darkMode ? 'text-green-200' : 'text-green-800'
+              }`}>
+                {pending > 0
+                  ? `${pending} ${employeeType}(s) pending inspection`
+                  : 'All inspections completed! 🎉'}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  </div>
+)}
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
   <PhotoUpload
     label="Employee Photo"
