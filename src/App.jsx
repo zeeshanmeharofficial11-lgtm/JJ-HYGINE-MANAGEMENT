@@ -1045,7 +1045,7 @@ const Dashboard = ({ onNavigate, stats, user, onLogout, darkMode, toggleDarkMode
         </div>
 
         {/* Employee Status Overview - Ultra Modern */}
-{/* Employee Status Overview - Ultra Modern WITH SHIFT BREAKDOWN */}
+{/* Employee Status Overview - Ultra Modern WITH SHIFT BREAKDOWN + INSPECTION PROGRESS */}
 <div className={`${darkMode ? 'bg-gray-800/80 border-gray-700' : 'bg-white border-gray-100'} border-2 backdrop-blur-xl rounded-3xl shadow-2xl p-7 mb-8 relative overflow-hidden`}>
   {/* Background Decoration */}
   <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full blur-3xl"></div>
@@ -1095,6 +1095,17 @@ const Dashboard = ({ onNavigate, stats, user, onLogout, darkMode, toggleDarkMode
           shiftBTotals.medical += config.shiftB.medical;
         });
         
+        // Calculate inspection progress
+        const today = new Date().toISOString().split('T')[0];
+        const todayChecklists = Database.checklists.filter(c => 
+          c.basicInfo.date === today && 
+          c.basicInfo.employeeType === type &&
+          (user.role === 'admin' || c.basicInfo.branch === user.branch)
+        );
+        const completedInspections = todayChecklists.length;
+        const expectedInspections = totals.working;
+        const inspectionProgress = expectedInspections > 0 ? (completedInspections / expectedInspections) * 100 : 0;
+        
         const colors = {
           rider: { 
             gradient: 'from-blue-500 via-blue-600 to-indigo-600', 
@@ -1143,7 +1154,7 @@ const Dashboard = ({ onNavigate, stats, user, onLogout, darkMode, toggleDarkMode
               </div>
             </div>
             
-            {/* Total Count - Larger */}
+            {/* Total Count */}
             <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl p-4 mb-3 border ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
               <div className="flex justify-between items-center">
                 <span className={`text-sm font-bold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Total Staff</span>
@@ -1151,11 +1162,66 @@ const Dashboard = ({ onNavigate, stats, user, onLogout, darkMode, toggleDarkMode
               </div>
             </div>
             
-            {/* Combined Working Status - Prominent */}
+            {/* Combined Working Status */}
             <div className={`${darkMode ? 'bg-green-900/30' : 'bg-green-50'} border-2 ${darkMode ? 'border-green-700' : 'border-green-200'} rounded-xl p-3 mb-4`}>
               <div className="flex justify-between items-center">
                 <span className={`text-sm font-bold ${darkMode ? 'text-green-200' : 'text-green-700'}`}>✓ Working Today (Combined)</span>
                 <span className={`text-2xl font-black ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{totals.working}</span>
+              </div>
+            </div>
+            
+            {/* Inspection Progress Bar */}
+            <div className={`${darkMode ? 'bg-gray-800/50 border-gray-600' : 'bg-white border-gray-200'} border-2 rounded-xl p-4 mb-4`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${darkMode ? 'bg-purple-900/50' : 'bg-purple-100'}`}>
+                    <span className="text-sm">📋</span>
+                  </div>
+                  <span className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Inspections Completed Today
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className={`text-xl font-black ${
+                    inspectionProgress === 100 ? 'text-green-500' : 
+                    inspectionProgress > 0 ? 'text-blue-500' : 
+                    'text-gray-400'
+                  }`}>
+                    {completedInspections}
+                  </span>
+                  <span className={`text-sm font-bold ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    / {expectedInspections}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Progress Bar */}
+              <div className={`w-full h-3 rounded-full overflow-hidden mb-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                <div 
+                  className={`h-full rounded-full transition-all duration-1000 ${
+                    inspectionProgress === 100 ? 'bg-gradient-to-r from-green-500 to-green-600' :
+                    inspectionProgress > 0 ? 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500' :
+                    'bg-gray-400'
+                  }`}
+                  style={{ width: `${inspectionProgress}%` }}
+                />
+              </div>
+              
+              {/* Status Text */}
+              <div className="flex items-center justify-between">
+                <p className={`text-xs font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {inspectionProgress === 100 ? '🎉 All inspections complete!' : 
+                   inspectionProgress > 0 ? `${(expectedInspections - completedInspections)} pending` :
+                   'No inspections yet'}
+                </p>
+                <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                  inspectionProgress === 100 ? 'bg-green-500 text-white' :
+                  inspectionProgress >= 50 ? 'bg-blue-500 text-white' :
+                  inspectionProgress > 0 ? 'bg-yellow-500 text-white' :
+                  darkMode ? 'bg-gray-600 text-gray-300' : 'bg-gray-300 text-gray-700'
+                }`}>
+                  {inspectionProgress.toFixed(0)}%
+                </span>
               </div>
             </div>
             
@@ -1181,25 +1247,25 @@ const Dashboard = ({ onNavigate, stats, user, onLogout, darkMode, toggleDarkMode
                     <div className={`${darkMode ? 'bg-green-800/50' : 'bg-green-100'} rounded-lg p-2 mb-1`}>
                       <p className="text-lg font-black text-green-600">{shiftATotals.count}</p>
                     </div>
-                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Work</p>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Working</p>
                   </div>
                   <div className="text-center">
                     <div className={`${darkMode ? 'bg-yellow-800/50' : 'bg-yellow-100'} rounded-lg p-2 mb-1`}>
                       <p className="text-lg font-black text-yellow-600">{shiftATotals.dayOff}</p>
                     </div>
-                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Off</p>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Day Off</p>
                   </div>
                   <div className="text-center">
                     <div className={`${darkMode ? 'bg-red-800/50' : 'bg-red-100'} rounded-lg p-2 mb-1`}>
                       <p className="text-lg font-black text-red-600">{shiftATotals.noShow}</p>
                     </div>
-                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Absent</p>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>No Show</p>
                   </div>
                   <div className="text-center">
                     <div className={`${darkMode ? 'bg-orange-800/50' : 'bg-orange-100'} rounded-lg p-2 mb-1`}>
                       <p className="text-lg font-black text-orange-600">{shiftATotals.medical}</p>
                     </div>
-                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Med</p>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Medical</p>
                   </div>
                 </div>
               </div>
@@ -1224,25 +1290,25 @@ const Dashboard = ({ onNavigate, stats, user, onLogout, darkMode, toggleDarkMode
                     <div className={`${darkMode ? 'bg-green-800/50' : 'bg-green-100'} rounded-lg p-2 mb-1`}>
                       <p className="text-lg font-black text-green-600">{shiftBTotals.count}</p>
                     </div>
-                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Work</p>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Working</p>
                   </div>
                   <div className="text-center">
                     <div className={`${darkMode ? 'bg-yellow-800/50' : 'bg-yellow-100'} rounded-lg p-2 mb-1`}>
                       <p className="text-lg font-black text-yellow-600">{shiftBTotals.dayOff}</p>
                     </div>
-                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Off</p>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Day Off</p>
                   </div>
                   <div className="text-center">
                     <div className={`${darkMode ? 'bg-red-800/50' : 'bg-red-100'} rounded-lg p-2 mb-1`}>
                       <p className="text-lg font-black text-red-600">{shiftBTotals.noShow}</p>
                     </div>
-                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Absent</p>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>No Show</p>
                   </div>
                   <div className="text-center">
                     <div className={`${darkMode ? 'bg-orange-800/50' : 'bg-orange-100'} rounded-lg p-2 mb-1`}>
                       <p className="text-lg font-black text-orange-600">{shiftBTotals.medical}</p>
                     </div>
-                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Med</p>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Medical</p>
                   </div>
                 </div>
               </div>
@@ -1250,11 +1316,11 @@ const Dashboard = ({ onNavigate, stats, user, onLogout, darkMode, toggleDarkMode
             
             {/* Combined Other Status - Compact Grid */}
             <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl p-3 border ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-              <p className={`text-xs font-bold mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Combined Totals</p>
+              <p className={`text-xs font-bold mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Combined Daily Totals</p>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: 'Off', value: totals.dayOff, color: 'yellow', icon: '🌙' },
-                  { label: 'Absent', value: totals.noShow, color: 'red', icon: '❌' },
+                  { label: 'Day Off', value: totals.dayOff, color: 'yellow', icon: '🌙' },
+                  { label: 'No Show', value: totals.noShow, color: 'red', icon: '❌' },
                   { label: 'Medical', value: totals.medical, color: 'orange', icon: '🏥' }
                 ].map((item, i) => (
                   <div 
