@@ -1044,7 +1044,8 @@ const Dashboard = ({ onNavigate, stats, user, onLogout, darkMode, toggleDarkMode
           ))}
         </div>
 
-        {/* Employee Status Overview - Ultra Modern WITH SHIFT BREAKDOWN */}
+        {/* Employee Status Overview - Ultra Modern */}
+{/* Employee Status Overview - Ultra Modern WITH SHIFT BREAKDOWN */}
 <div className={`${darkMode ? 'bg-gray-800/80 border-gray-700' : 'bg-white border-gray-100'} border-2 backdrop-blur-xl rounded-3xl shadow-2xl p-7 mb-8 relative overflow-hidden`}>
   {/* Background Decoration */}
   <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full blur-3xl"></div>
