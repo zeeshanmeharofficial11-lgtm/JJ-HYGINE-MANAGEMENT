@@ -1044,129 +1044,235 @@ const Dashboard = ({ onNavigate, stats, user, onLogout, darkMode, toggleDarkMode
           ))}
         </div>
 
-        {/* Employee Status Overview - Ultra Modern */}
-        <div className={`${darkMode ? 'bg-gray-800/80 border-gray-700' : 'bg-white border-gray-100'} border-2 backdrop-blur-xl rounded-3xl shadow-2xl p-7 mb-8 relative overflow-hidden`}>
-          {/* Background Decoration */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full blur-3xl"></div>
+        {/* Employee Status Overview - Ultra Modern WITH SHIFT BREAKDOWN */}
+<div className={`${darkMode ? 'bg-gray-800/80 border-gray-700' : 'bg-white border-gray-100'} border-2 backdrop-blur-xl rounded-3xl shadow-2xl p-7 mb-8 relative overflow-hidden`}>
+  {/* Background Decoration */}
+  <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full blur-3xl"></div>
+  
+  <div className="relative z-10">
+    <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
+          <Users size={24} className="text-white" />
+        </div>
+        <div>
+          <h3 className={`text-xl font-black ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            Employee Status
+          </h3>
+          <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            {user.role === 'admin' ? 'All Branches' : user.branch}
+          </p>
+        </div>
+      </div>
+    </div>
+    
+    <div className="space-y-6">
+      {['rider', 'crew', 'manager'].map(type => {
+        const branches = user.role === 'admin' ? Database.branches : [user.branch];
+        let totals = { total: 0, working: 0, dayOff: 0, noShow: 0, medical: 0 };
+        let shiftATotals = { count: 0, dayOff: 0, noShow: 0, medical: 0 };
+        let shiftBTotals = { count: 0, dayOff: 0, noShow: 0, medical: 0 };
+        
+        branches.forEach(branch => {
+          const config = Database.getStaffConfig(branch, type);
+          totals.total += config.total;
+          totals.working += config.shiftA.count + config.shiftB.count;
+          totals.dayOff += config.shiftA.dayOff + config.shiftB.dayOff;
+          totals.noShow += config.shiftA.noShow + config.shiftB.noShow;
+          totals.medical += config.shiftA.medical + config.shiftB.medical;
           
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Users size={24} className="text-white" />
+          // Shift A
+          shiftATotals.count += config.shiftA.count;
+          shiftATotals.dayOff += config.shiftA.dayOff;
+          shiftATotals.noShow += config.shiftA.noShow;
+          shiftATotals.medical += config.shiftA.medical;
+          
+          // Shift B
+          shiftBTotals.count += config.shiftB.count;
+          shiftBTotals.dayOff += config.shiftB.dayOff;
+          shiftBTotals.noShow += config.shiftB.noShow;
+          shiftBTotals.medical += config.shiftB.medical;
+        });
+        
+        const colors = {
+          rider: { 
+            gradient: 'from-blue-500 via-blue-600 to-indigo-600', 
+            icon: '🏍️',
+            light: 'bg-blue-50',
+            dark: 'bg-blue-900/20',
+            text: 'text-blue-600',
+            border: 'border-blue-200'
+          },
+          crew: { 
+            gradient: 'from-green-500 via-green-600 to-emerald-600', 
+            icon: '👨‍🍳',
+            light: 'bg-green-50',
+            dark: 'bg-green-900/20',
+            text: 'text-green-600',
+            border: 'border-green-200'
+          },
+          manager: { 
+            gradient: 'from-purple-500 via-purple-600 to-pink-600', 
+            icon: '👔',
+            light: 'bg-purple-50',
+            dark: 'bg-purple-900/20',
+            text: 'text-purple-600',
+            border: 'border-purple-200'
+          }
+        };
+        
+        const workingPercentage = totals.total > 0 ? (totals.working / totals.total) * 100 : 0;
+        
+        return (
+          <div 
+            key={type} 
+            className={`${darkMode ? 'bg-gray-700/50 border-gray-600' : `${colors[type].light} ${colors[type].border}`} border-2 rounded-2xl p-5 shadow-lg hover:shadow-2xl transition-all duration-300`}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-14 h-14 bg-gradient-to-br ${colors[type].gradient} rounded-2xl flex items-center justify-center text-2xl shadow-xl`}>
+                {colors[type].icon}
+              </div>
+              <div className="flex-1">
+                <h4 className={`text-base font-black capitalize ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {type}s
+                </h4>
+                <p className={`text-xs font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {workingPercentage.toFixed(0)}% Active
+                </p>
+              </div>
+            </div>
+            
+            {/* Total Count - Larger */}
+            <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl p-4 mb-3 border ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+              <div className="flex justify-between items-center">
+                <span className={`text-sm font-bold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Total Staff</span>
+                <span className={`text-3xl font-black ${colors[type].text}`}>{totals.total}</span>
+              </div>
+            </div>
+            
+            {/* Combined Working Status - Prominent */}
+            <div className={`${darkMode ? 'bg-green-900/30' : 'bg-green-50'} border-2 ${darkMode ? 'border-green-700' : 'border-green-200'} rounded-xl p-3 mb-4`}>
+              <div className="flex justify-between items-center">
+                <span className={`text-sm font-bold ${darkMode ? 'text-green-200' : 'text-green-700'}`}>✓ Working Today (Combined)</span>
+                <span className={`text-2xl font-black ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{totals.working}</span>
+              </div>
+            </div>
+            
+            {/* Shift Breakdown */}
+            <div className="space-y-3 mb-4">
+              {/* Shift A */}
+              <div className={`${darkMode ? 'bg-blue-900/20 border-blue-800' : 'bg-blue-50 border-blue-200'} border-2 rounded-xl p-4`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${darkMode ? 'bg-blue-700' : 'bg-blue-200'}`}>
+                      <span className="text-sm">🌅</span>
+                    </div>
+                    <span className={`font-bold text-sm ${darkMode ? 'text-blue-200' : 'text-blue-900'}`}>
+                      Shift A (Morning)
+                    </span>
+                  </div>
+                  <span className={`text-xl font-black ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                    {shiftATotals.count + shiftATotals.dayOff + shiftATotals.noShow + shiftATotals.medical}
+                  </span>
                 </div>
-                <div>
-                  <h3 className={`text-xl font-black ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                    Employee Status
-                  </h3>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {user.role === 'admin' ? 'All Branches' : user.branch}
-                  </p>
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="text-center">
+                    <div className={`${darkMode ? 'bg-green-800/50' : 'bg-green-100'} rounded-lg p-2 mb-1`}>
+                      <p className="text-lg font-black text-green-600">{shiftATotals.count}</p>
+                    </div>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Work</p>
+                  </div>
+                  <div className="text-center">
+                    <div className={`${darkMode ? 'bg-yellow-800/50' : 'bg-yellow-100'} rounded-lg p-2 mb-1`}>
+                      <p className="text-lg font-black text-yellow-600">{shiftATotals.dayOff}</p>
+                    </div>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Off</p>
+                  </div>
+                  <div className="text-center">
+                    <div className={`${darkMode ? 'bg-red-800/50' : 'bg-red-100'} rounded-lg p-2 mb-1`}>
+                      <p className="text-lg font-black text-red-600">{shiftATotals.noShow}</p>
+                    </div>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Absent</p>
+                  </div>
+                  <div className="text-center">
+                    <div className={`${darkMode ? 'bg-orange-800/50' : 'bg-orange-100'} rounded-lg p-2 mb-1`}>
+                      <p className="text-lg font-black text-orange-600">{shiftATotals.medical}</p>
+                    </div>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Med</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Shift B */}
+              <div className={`${darkMode ? 'bg-purple-900/20 border-purple-800' : 'bg-purple-50 border-purple-200'} border-2 rounded-xl p-4`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${darkMode ? 'bg-purple-700' : 'bg-purple-200'}`}>
+                      <span className="text-sm">🌙</span>
+                    </div>
+                    <span className={`font-bold text-sm ${darkMode ? 'text-purple-200' : 'text-purple-900'}`}>
+                      Shift B (Evening)
+                    </span>
+                  </div>
+                  <span className={`text-xl font-black ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>
+                    {shiftBTotals.count + shiftBTotals.dayOff + shiftBTotals.noShow + shiftBTotals.medical}
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="text-center">
+                    <div className={`${darkMode ? 'bg-green-800/50' : 'bg-green-100'} rounded-lg p-2 mb-1`}>
+                      <p className="text-lg font-black text-green-600">{shiftBTotals.count}</p>
+                    </div>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Work</p>
+                  </div>
+                  <div className="text-center">
+                    <div className={`${darkMode ? 'bg-yellow-800/50' : 'bg-yellow-100'} rounded-lg p-2 mb-1`}>
+                      <p className="text-lg font-black text-yellow-600">{shiftBTotals.dayOff}</p>
+                    </div>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Off</p>
+                  </div>
+                  <div className="text-center">
+                    <div className={`${darkMode ? 'bg-red-800/50' : 'bg-red-100'} rounded-lg p-2 mb-1`}>
+                      <p className="text-lg font-black text-red-600">{shiftBTotals.noShow}</p>
+                    </div>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Absent</p>
+                  </div>
+                  <div className="text-center">
+                    <div className={`${darkMode ? 'bg-orange-800/50' : 'bg-orange-100'} rounded-lg p-2 mb-1`}>
+                      <p className="text-lg font-black text-orange-600">{shiftBTotals.medical}</p>
+                    </div>
+                    <p className={`text-[10px] font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Med</p>
+                  </div>
                 </div>
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {['rider', 'crew', 'manager'].map(type => {
-                const branches = user.role === 'admin' ? Database.branches : [user.branch];
-                let totals = { total: 0, working: 0, dayOff: 0, noShow: 0, medical: 0 };
-                
-                branches.forEach(branch => {
-                  const config = Database.getStaffConfig(branch, type);
-                  totals.total += config.total;
-                  totals.working += config.shiftA.count + config.shiftB.count;
-                  totals.dayOff += config.shiftA.dayOff + config.shiftB.dayOff;
-                  totals.noShow += config.shiftA.noShow + config.shiftB.noShow;
-                  totals.medical += config.shiftA.medical + config.shiftB.medical;
-                });
-                
-                const colors = {
-                  rider: { 
-                    gradient: 'from-blue-500 via-blue-600 to-indigo-600', 
-                    icon: '🏍️',
-                    light: 'bg-blue-50',
-                    dark: 'bg-blue-900/20',
-                    text: 'text-blue-600',
-                    border: 'border-blue-200'
-                  },
-                  crew: { 
-                    gradient: 'from-green-500 via-green-600 to-emerald-600', 
-                    icon: '👨‍🍳',
-                    light: 'bg-green-50',
-                    dark: 'bg-green-900/20',
-                    text: 'text-green-600',
-                    border: 'border-green-200'
-                  },
-                  manager: { 
-                    gradient: 'from-purple-500 via-purple-600 to-pink-600', 
-                    icon: '👔',
-                    light: 'bg-purple-50',
-                    dark: 'bg-purple-900/20',
-                    text: 'text-purple-600',
-                    border: 'border-purple-200'
-                  }
-                };
-                
-                const workingPercentage = totals.total > 0 ? (totals.working / totals.total) * 100 : 0;
-                
-                return (
+            {/* Combined Other Status - Compact Grid */}
+            <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl p-3 border ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+              <p className={`text-xs font-bold mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Combined Totals</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'Off', value: totals.dayOff, color: 'yellow', icon: '🌙' },
+                  { label: 'Absent', value: totals.noShow, color: 'red', icon: '❌' },
+                  { label: 'Medical', value: totals.medical, color: 'orange', icon: '🏥' }
+                ].map((item, i) => (
                   <div 
-                    key={type} 
-                    className={`${darkMode ? 'bg-gray-700/50 border-gray-600' : `${colors[type].light} ${colors[type].border}`} border-2 rounded-2xl p-5 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1`}
+                    key={i} 
+                    className={`${darkMode ? `bg-${item.color}-900/30` : `bg-${item.color}-50`} rounded-xl p-2 text-center border ${darkMode ? `border-${item.color}-800` : `border-${item.color}-200`}`}
                   >
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className={`w-14 h-14 bg-gradient-to-br ${colors[type].gradient} rounded-2xl flex items-center justify-center text-2xl shadow-xl`}>
-                        {colors[type].icon}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className={`text-base font-black capitalize ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                          {type}s
-                        </h4>
-                        <p className={`text-xs font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          {workingPercentage.toFixed(0)}% Active
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Total Count - Larger */}
-                    <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl p-4 mb-3 border ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-                      <div className="flex justify-between items-center">
-                        <span className={`text-sm font-bold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Total Staff</span>
-                        <span className={`text-3xl font-black ${colors[type].text}`}>{totals.total}</span>
-                      </div>
-                    </div>
-                    
-                    {/* Working Status - Prominent */}
-                    <div className={`${darkMode ? 'bg-green-900/30' : 'bg-green-50'} border-2 ${darkMode ? 'border-green-700' : 'border-green-200'} rounded-xl p-3 mb-3`}>
-                      <div className="flex justify-between items-center">
-                        <span className={`text-sm font-bold ${darkMode ? 'text-green-200' : 'text-green-700'}`}>✓ Working Today</span>
-                        <span className={`text-2xl font-black ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{totals.working}</span>
-                      </div>
-                    </div>
-                    
-                    {/* Other Status - Compact Grid */}
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { label: 'Off', value: totals.dayOff, color: 'yellow', icon: '🌙' },
-                        { label: 'Absent', value: totals.noShow, color: 'red', icon: '❌' },
-                        { label: 'Medical', value: totals.medical, color: 'orange', icon: '🏥' }
-                      ].map((item, i) => (
-                        <div 
-                          key={i} 
-                          className={`${darkMode ? `bg-${item.color}-900/30` : `bg-${item.color}-50`} rounded-xl p-2 text-center border ${darkMode ? `border-${item.color}-800` : `border-${item.color}-200`}`}
-                        >
-                          <p className="text-lg mb-0.5">{item.icon}</p>
-                          <p className={`text-xs font-bold ${darkMode ? `text-${item.color}-200` : `text-${item.color}-700`}`}>{item.label}</p>
-                          <p className={`text-lg font-black ${darkMode ? `text-${item.color}-400` : `text-${item.color}-600`}`}>{item.value}</p>
-                        </div>
-                      ))}
-                    </div>
+                    <p className="text-lg mb-0.5">{item.icon}</p>
+                    <p className={`text-xs font-bold ${darkMode ? `text-${item.color}-200` : `text-${item.color}-700`}`}>{item.label}</p>
+                    <p className={`text-lg font-black ${darkMode ? `text-${item.color}-400` : `text-${item.color}-600`}`}>{item.value}</p>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        );
+      })}
+    </div>
+  </div>
+</div>
 
         {/* Manager Efficiency - Modern Cards */}
         <div className={`${darkMode ? 'bg-gray-800/80 border-gray-700' : 'bg-white border-gray-100'} border-2 backdrop-blur-xl rounded-3xl shadow-2xl p-7 mb-8 relative overflow-hidden`}>
