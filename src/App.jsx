@@ -2534,137 +2534,172 @@ const handleSubmitForm = async () => {
             </div>
           </div>
 
-          {/* Basic Info */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Inspection Details</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Branch */}
-              <div>
-                <label className="block text-sm font-medium mb-1">Branch *</label>
-                {user.role === 'admin' ? (
-                  <select
-                    value={checklist.basicInfo.branch}
-                    onChange={e => handleInputChange('branch', e.target.value)}
-                    className={`w-full px-3 py-2 rounded border text-sm
-                      ${darkMode
-                        ? 'bg-gray-900 border-gray-700 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                  >
-                    <option value="">Select Branch</option>
-                    {Database.branches.map(b => (
-                      <option key={b} value={b}>
-                        {b}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={user.branch}
-                    readOnly
-                    className={`w-full px-3 py-2 rounded border text-sm
-                      ${darkMode
-                        ? 'bg-gray-900 border-gray-700 text-gray-200'
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                      }`}
-                  />
-                )}
-              </div>
+          {/* Basic Info - UPDATED WITH MODERN STYLING */}
+<div className={`${darkMode ? 'bg-gradient-to-br from-gray-800 to-gray-900' : 'bg-gradient-to-br from-white to-gray-50'} rounded-3xl p-6 border-2 ${darkMode ? 'border-gray-700' : 'border-gray-200'} mb-6 shadow-2xl overflow-hidden relative`}>
+  {/* Decorative Elements */}
+  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full blur-3xl"></div>
+  <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-green-500/10 to-yellow-500/10 rounded-full blur-3xl"></div>
+  
+  <div className="relative z-10">
+    {/* Header */}
+    <div className="flex items-center gap-3 mb-6">
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl ${
+        darkMode ? 'bg-gradient-to-br from-blue-600 to-purple-600' : 'bg-gradient-to-br from-blue-400 to-purple-400'
+      } shadow-xl transform hover:scale-110 transition-all`}>
+        📋
+      </div>
+      <div>
+        <h2 className={`text-xl font-black ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+          Inspection Details
+        </h2>
+        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          Fill in all required information
+        </p>
+      </div>
+    </div>
 
-              {/* Manager */}
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Inspected By (Manager) *
-                </label>
-                <select
-                  value={checklist.basicInfo.managerType}
-                  onChange={e => handleInputChange('managerType', e.target.value)}
-                  className={`w-full px-3 py-2 rounded border text-sm
-                    ${darkMode
-                      ? 'bg-gray-900 border-gray-700 text-white'
-                      : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                >
-                  <option value="">Select Manager Designation</option>
-                  <option value="DFPL Morning">DFPL Morning</option>
-                  <option value="DFPL Night">DFPL Night</option>
-                  <option value="BOH Morning">BOH Morning</option>
-                  <option value="BOH Night">BOH Night</option>
-                  <option value="FOH Morning">FOH Morning</option>
-                  <option value="FOH Night">FOH Night</option>
-                  <option value="ABL">ABL</option>
-                  <option value="BL">BL</option>
-                  <option value="Auditor">Auditor</option>
-                </select>
-              </div>
-
-              {/* Date */}
-              <div>
-                <label className="block text-sm font-medium mb-1">Inspection Date</label>
-                <input
-                  type="date"
-                  value={checklist.basicInfo.date}
-                  onChange={e => handleInputChange('date', e.target.value)}
-                  className={`w-full px-3 py-2 rounded border text-sm
-                    ${darkMode
-                      ? 'bg-gray-900 border-gray-700 text-white'
-                      : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                />
-              </div>
-
-              {/* Shift */}
-              <div>
-                <label className="block text-sm font-medium mb-1">Shift</label>
-                <select
-                  value={checklist.basicInfo.shift}
-                  onChange={e => handleInputChange('shift', e.target.value)}
-                  className={`w-full px-3 py-2 rounded border text-sm
-                    ${darkMode
-                      ? 'bg-gray-900 border-gray-700 text-white'
-                      : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                >
-                  <option value="">Select Shift</option>
-                  <option value="A">Shift A (Morning)</option>
-                  <option value="B">Shift B (Evening)</option>
-                </select>
-              </div>
-
-              {/* Employee Name */}
-              <div>
-                <label className="block text-sm font-medium mb-1">Employee Name</label>
-                <input
-                  type="text"
-                  value={checklist.basicInfo.employeeName}
-                  onChange={e => handleInputChange('employeeName', e.target.value)}
-                  className={`w-full px-3 py-2 rounded border text-sm
-                    ${darkMode
-                      ? 'bg-gray-900 border-gray-700 text-white'
-                      : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                  placeholder="Enter full name"
-                />
-              </div>
-
-              {/* Employee ID */}
-              <div>
-                <label className="block text-sm font-medium mb-1">Employee ID</label>
-                <input
-                  type="text"
-                  value={checklist.basicInfo.employeeId}
-                  onChange={e => handleInputChange('employeeId', e.target.value)}
-                  className={`w-full px-3 py-2 rounded border text-sm
-                    ${darkMode
-                      ? 'bg-gray-900 border-gray-700 text-white'
-                      : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                  placeholder="Enter employee ID"
-                />
-              </div>
-            </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {/* Branch */}
+      <div className={`${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-2xl p-4 border-2 ${darkMode ? 'border-gray-600' : 'border-gray-200'} transition-all hover:shadow-lg`}>
+        <label className={`flex items-center gap-2 text-sm font-bold mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+          <span className="text-lg">🏢</span>
+          Branch *
+        </label>
+        {user.role === 'admin' ? (
+          <select
+            value={checklist.basicInfo.branch}
+            onChange={e => handleInputChange('branch', e.target.value)}
+            className={`w-full px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all focus:ring-4 focus:ring-blue-500/20 ${
+              darkMode
+                ? 'bg-gray-800 border-gray-600 text-white focus:border-blue-500'
+                : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+            }`}
+          >
+            <option value="">Select Branch</option>
+            {Database.branches.map(b => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div className={`w-full px-4 py-3 rounded-xl border-2 text-sm font-bold ${
+            darkMode
+              ? 'bg-gray-800 border-gray-600 text-blue-400'
+              : 'bg-blue-50 border-blue-300 text-blue-700'
+          }`}>
+            {user.branch}
           </div>
+        )}
+      </div>
+
+      {/* Manager */}
+      <div className={`${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-2xl p-4 border-2 ${darkMode ? 'border-gray-600' : 'border-gray-200'} transition-all hover:shadow-lg`}>
+        <label className={`flex items-center gap-2 text-sm font-bold mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+          <span className="text-lg">👔</span>
+          Inspected By (Manager) *
+        </label>
+        <select
+          value={checklist.basicInfo.managerType}
+          onChange={e => handleInputChange('managerType', e.target.value)}
+          className={`w-full px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all focus:ring-4 focus:ring-blue-500/20 ${
+            darkMode
+              ? 'bg-gray-800 border-gray-600 text-white focus:border-blue-500'
+              : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+          }`}
+        >
+          <option value="">Select Manager Designation</option>
+          <option value="DFPL Morning">DFPL Morning</option>
+          <option value="DFPL Night">DFPL Night</option>
+          <option value="BOH Morning">BOH Morning</option>
+          <option value="BOH Night">BOH Night</option>
+          <option value="FOH Morning">FOH Morning</option>
+          <option value="FOH Night">FOH Night</option>
+          <option value="ABL">ABL</option>
+          <option value="BL">BL</option>
+          <option value="Auditor">Auditor</option>
+        </select>
+      </div>
+
+      {/* Date */}
+      <div className={`${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-2xl p-4 border-2 ${darkMode ? 'border-gray-600' : 'border-gray-200'} transition-all hover:shadow-lg`}>
+        <label className={`flex items-center gap-2 text-sm font-bold mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+          <span className="text-lg">📅</span>
+          Inspection Date *
+        </label>
+        <input
+          type="date"
+          value={checklist.basicInfo.date}
+          onChange={e => handleInputChange('date', e.target.value)}
+          className={`w-full px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all focus:ring-4 focus:ring-blue-500/20 ${
+            darkMode
+              ? 'bg-gray-800 border-gray-600 text-white focus:border-blue-500'
+              : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+          }`}
+        />
+      </div>
+
+      {/* Shift */}
+      <div className={`${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-2xl p-4 border-2 ${darkMode ? 'border-gray-600' : 'border-gray-200'} transition-all hover:shadow-lg`}>
+        <label className={`flex items-center gap-2 text-sm font-bold mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+          <span className="text-lg">🌓</span>
+          Shift *
+        </label>
+        <select
+          value={checklist.basicInfo.shift}
+          onChange={e => handleInputChange('shift', e.target.value)}
+          className={`w-full px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all focus:ring-4 focus:ring-blue-500/20 ${
+            darkMode
+              ? 'bg-gray-800 border-gray-600 text-white focus:border-blue-500'
+              : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+          }`}
+        >
+          <option value="">Select Shift</option>
+          <option value="A">Shift A (Morning)</option>
+          <option value="B">Shift B (Evening)</option>
+        </select>
+      </div>
+
+      {/* Employee Name */}
+      <div className={`${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-2xl p-4 border-2 ${darkMode ? 'border-gray-600' : 'border-gray-200'} transition-all hover:shadow-lg`}>
+        <label className={`flex items-center gap-2 text-sm font-bold mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+          <span className="text-lg">👤</span>
+          Employee Name *
+        </label>
+        <input
+          type="text"
+          value={checklist.basicInfo.employeeName}
+          onChange={e => handleInputChange('employeeName', e.target.value)}
+          className={`w-full px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all focus:ring-4 focus:ring-blue-500/20 ${
+            darkMode
+              ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-500 focus:border-blue-500'
+              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
+          }`}
+          placeholder="Enter full name"
+        />
+      </div>
+
+      {/* Employee ID */}
+      <div className={`${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-2xl p-4 border-2 ${darkMode ? 'border-gray-600' : 'border-gray-200'} transition-all hover:shadow-lg`}>
+        <label className={`flex items-center gap-2 text-sm font-bold mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+          <span className="text-lg">🔢</span>
+          Employee ID *
+        </label>
+        <input
+          type="text"
+          value={checklist.basicInfo.employeeId}
+          onChange={e => handleInputChange('employeeId', e.target.value)}
+          className={`w-full px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all focus:ring-4 focus:ring-blue-500/20 ${
+            darkMode
+              ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-500 focus:border-blue-500'
+              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
+          }`}
+          placeholder="Enter employee ID"
+        />
+      </div>
+    </div>
+  </div>
+</div>
 
           {/* Branch overview */}
           {checklist.basicInfo.shift && checklist.basicInfo.branch && (
