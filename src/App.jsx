@@ -3076,23 +3076,6 @@ const handleSubmitForm = async () => {
     </div>
   </div>
 )}
-{/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  {/* <PhotoUpload
-    label="Employee Photo"
-    photo={employeePhoto}
-    onChange={e => handlePhotoUpload(e, 'employee')}
-    darkMode={darkMode}
-  />
-  {employeeType === 'rider' && (
-    <PhotoUpload
-      label="Bike Photo"
-      photo={bikePhoto}
-      onChange={e => handlePhotoUpload(e, 'bike')}
-      darkMode={darkMode}
-    />
-  )} */}
-</div> */}
-
 
           {/* Rider-only sections */}
           {employeeType === 'rider' && (
