@@ -4,35 +4,35 @@ import {
   Check, X, Camera, Save, AlertCircle, BarChart3, Users, Building, TrendingUp, Award,
   AlertTriangle, Edit2, ChevronDown, ChevronUp, LogOut, Lock, Star, Zap, Trophy,
   Target, Flame, Moon, Sun, Download, Mail, Bell, Filter, Calendar, MapPin, Clock,
-  CheckCircle, XCircle, Upload  // Add Upload here
+  CheckCircle, XCircle  // Add Upload here
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { FileText } from 'lucide-react'; // make sure FileText is included
 
-const IMGBB_API_KEY = '08b53a28b8374832a8ea6c5f20048423';
+// const IMGBB_API_KEY = '08b53a28b8374832a8ea6c5f20048423';
 
-async function uploadImageToImgbb(file) {
-  const formData = new FormData();
-  formData.append('key', IMGBB_API_KEY);
-  formData.append('image', file);
+// async function uploadImageToImgbb(file) {
+//   const formData = new FormData();
+//   formData.append('key', IMGBB_API_KEY);
+//   formData.append('image', file);
 
-  const res = await fetch('https://api.imgbb.com/1/upload', {
-    method: 'POST',
-    body: formData,
-  });
+//   const res = await fetch('https://api.imgbb.com/1/upload', {
+//     method: 'POST',
+//     body: formData,
+//   });
 
-  const data = await res.json();
+//   const data = await res.json();
 
-  if (!data.success) {
-    console.error('ImgBB upload error', data);
-    throw new Error('ImgBB upload failed');
-  }
+//   if (!data.success) {
+//     console.error('ImgBB upload error', data);
+//     throw new Error('ImgBB upload failed');
+//   }
 
-  // You can also use data.data.display_url if you prefer
-  return data.data.url;
-}
+//   // You can also use data.data.display_url if you prefer
+//   return data.data.url;
+// }
 
 
 
@@ -1719,307 +1719,307 @@ const Dashboard = ({ onNavigate, stats, user, onLogout, darkMode, toggleDarkMode
   );
 };
 
-const PhotoUpload = ({ label, photo, onChange, darkMode }) => {
-  const inputId = label.toLowerCase().replace(/\s+/g, '-') + '-upload';
-  const isUploading = photo === 'uploading...';
-  const [showCamera, setShowCamera] = React.useState(false);
-  const videoRef = React.useRef(null);
-  const [stream, setStream] = React.useState(null);
-  const [capturedImage, setCapturedImage] = React.useState(null);
-  const [cameraError, setCameraError] = React.useState(null);
+// const PhotoUpload = ({ label, photo, onChange, darkMode }) => {
+//   const inputId = label.toLowerCase().replace(/\s+/g, '-') + '-upload';
+//   const isUploading = photo === 'uploading...';
+//   const [showCamera, setShowCamera] = React.useState(false);
+//   const videoRef = React.useRef(null);
+//   const [stream, setStream] = React.useState(null);
+//   const [capturedImage, setCapturedImage] = React.useState(null);
+//   const [cameraError, setCameraError] = React.useState(null);
 
-  const startCamera = async () => {
-    try {
-      setCameraError(null);
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' } // Use back camera on mobile
-      });
-      setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-    } catch (err) {
-      console.error('Camera access error:', err);
-      setCameraError('Unable to access camera. Please check permissions.');
-    }
-  };
+//   const startCamera = async () => {
+//     try {
+//       setCameraError(null);
+//       const mediaStream = await navigator.mediaDevices.getUserMedia({
+//         video: { facingMode: 'environment' } // Use back camera on mobile
+//       });
+//       setStream(mediaStream);
+//       if (videoRef.current) {
+//         videoRef.current.srcObject = mediaStream;
+//       }
+//     } catch (err) {
+//       console.error('Camera access error:', err);
+//       setCameraError('Unable to access camera. Please check permissions.');
+//     }
+//   };
 
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
-  };
+//   const stopCamera = () => {
+//     if (stream) {
+//       stream.getTracks().forEach(track => track.stop());
+//       setStream(null);
+//     }
+//   };
 
-  const capturePhoto = () => {
-    const video = videoRef.current;
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
+//   const capturePhoto = () => {
+//     const video = videoRef.current;
+//     const canvas = document.createElement('canvas');
+//     canvas.width = video.videoWidth;
+//     canvas.height = video.videoHeight;
+//     const ctx = canvas.getContext('2d');
+//     ctx.drawImage(video, 0, 0);
     
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-    setCapturedImage(dataUrl);
-    stopCamera();
-  };
+//     const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+//     setCapturedImage(dataUrl);
+//     stopCamera();
+//   };
 
-  const retake = () => {
-    setCapturedImage(null);
-    startCamera();
-  };
+//   const retake = () => {
+//     setCapturedImage(null);
+//     startCamera();
+//   };
 
-  const confirmCapture = () => {
-    const canvas = document.createElement('canvas');
-    const img = new Image();
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      canvas.getContext('2d').drawImage(img, 0, 0);
-      canvas.toBlob((blob) => {
-        const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' });
-        const syntheticEvent = {
-          target: {
-            files: [file]
-          }
-        };
-        onChange(syntheticEvent);
-        setShowCamera(false);
-        setCapturedImage(null);
-      }, 'image/jpeg', 0.8);
-    };
-    img.src = capturedImage;
-  };
+//   const confirmCapture = () => {
+//     const canvas = document.createElement('canvas');
+//     const img = new Image();
+//     img.onload = () => {
+//       canvas.width = img.width;
+//       canvas.height = img.height;
+//       canvas.getContext('2d').drawImage(img, 0, 0);
+//       canvas.toBlob((blob) => {
+//         const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' });
+//         const syntheticEvent = {
+//           target: {
+//             files: [file]
+//           }
+//         };
+//         onChange(syntheticEvent);
+//         setShowCamera(false);
+//         setCapturedImage(null);
+//       }, 'image/jpeg', 0.8);
+//     };
+//     img.src = capturedImage;
+//   };
 
-  const handleCameraClick = () => {
-    setShowCamera(true);
-    setTimeout(() => startCamera(), 100);
-  };
+//   const handleCameraClick = () => {
+//     setShowCamera(true);
+//     setTimeout(() => startCamera(), 100);
+//   };
 
-  const handleCloseCamera = () => {
-    stopCamera();
-    setShowCamera(false);
-    setCapturedImage(null);
-    setCameraError(null);
-  };
+//   const handleCloseCamera = () => {
+//     stopCamera();
+//     setShowCamera(false);
+//     setCapturedImage(null);
+//     setCameraError(null);
+//   };
 
-  React.useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, []);
+//   React.useEffect(() => {
+//     return () => {
+//       stopCamera();
+//     };
+//   }, []);
 
-  return (
-    <>
-      <div
-        className={`border-2 rounded-xl p-4 text-sm ${
-          darkMode ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-200 text-gray-900'
-        }`}
-      >
-        <label className="block font-semibold mb-3 text-base">
-          {label}
-        </label>
+//   return (
+//     <>
+//       <div
+//         className={`border-2 rounded-xl p-4 text-sm ${
+//           darkMode ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-200 text-gray-900'
+//         }`}
+//       >
+//         <label className="block font-semibold mb-3 text-base">
+//           {label}
+//         </label>
 
-        {/* Loading State */}
-        {isUploading && (
-          <div className="mb-3 flex items-center justify-center h-48 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-lg border-2 border-dashed border-blue-500/30">
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-2"></div>
-              <p className="text-sm font-medium text-blue-500">Uploading to ImgBB...</p>
-              <p className="text-xs text-gray-500 mt-1">Please wait</p>
-            </div>
-          </div>
-        )}
+//         {/* Loading State */}
+//         {isUploading && (
+//           <div className="mb-3 flex items-center justify-center h-48 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-lg border-2 border-dashed border-blue-500/30">
+//             <div className="text-center">
+//               <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-2"></div>
+//               <p className="text-sm font-medium text-blue-500">Uploading to ImgBB...</p>
+//               <p className="text-xs text-gray-500 mt-1">Please wait</p>
+//             </div>
+//           </div>
+//         )}
 
-        {/* Uploaded Photo Preview */}
-        {photo && !isUploading && (
-          <div className="mb-3 relative group">
-            <img
-              src={photo}
-              alt={label}
-              className="w-full h-48 object-cover rounded-lg border-2 border-green-500/30"
-            />
-            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-              <div className="text-center">
-                <Check className="mx-auto mb-2 text-green-400" size={32} />
-                <span className="text-white text-sm font-semibold">✓ Uploaded to ImgBB</span>
-              </div>
-            </div>
-          </div>
-        )}
+//         {/* Uploaded Photo Preview */}
+//         {photo && !isUploading && (
+//           <div className="mb-3 relative group">
+//             <img
+//               src={photo}
+//               alt={label}
+//               className="w-full h-48 object-cover rounded-lg border-2 border-green-500/30"
+//             />
+//             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+//               <div className="text-center">
+//                 <Check className="mx-auto mb-2 text-green-400" size={32} />
+//                 <span className="text-white text-sm font-semibold">✓ Uploaded to ImgBB</span>
+//               </div>
+//             </div>
+//           </div>
+//         )}
 
-        {/* Empty State */}
-        {!photo && (
-          <div className={`mb-3 h-48 rounded-lg border-2 border-dashed ${
-            darkMode ? 'border-gray-600 bg-gray-700/30' : 'border-gray-300 bg-gray-50'
-          } flex items-center justify-center`}>
-            <div className="text-center">
-              <Camera className={`mx-auto mb-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} size={32} />
-              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                No photo uploaded yet
-              </p>
-            </div>
-          </div>
-        )}
+//         {/* Empty State */}
+//         {!photo && (
+//           <div className={`mb-3 h-48 rounded-lg border-2 border-dashed ${
+//             darkMode ? 'border-gray-600 bg-gray-700/30' : 'border-gray-300 bg-gray-50'
+//           } flex items-center justify-center`}>
+//             <div className="text-center">
+//               <Camera className={`mx-auto mb-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} size={32} />
+//               <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+//                 No photo uploaded yet
+//               </p>
+//             </div>
+//           </div>
+//         )}
 
-        {/* Action Buttons - Side by Side */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={handleCameraClick}
-            disabled={isUploading}
-            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${
-              isUploading 
-                ? 'opacity-50 cursor-not-allowed bg-gray-300' 
-                : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
-            }`}
-          >
-            <Camera size={20} />
-            <span>Take Photo</span>
-          </button>
+//         {/* Action Buttons - Side by Side */}
+//         <div className="grid grid-cols-2 gap-3">
+//           <button
+//             type="button"
+//             onClick={handleCameraClick}
+//             disabled={isUploading}
+//             className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${
+//               isUploading 
+//                 ? 'opacity-50 cursor-not-allowed bg-gray-300' 
+//                 : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+//             }`}
+//           >
+//             <Camera size={20} />
+//             <span>Take Photo</span>
+//           </button>
 
-          <label
-            htmlFor={inputId}
-            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold cursor-pointer transition-all ${
-              isUploading
-                ? 'opacity-50 cursor-not-allowed bg-gray-300'
-                : darkMode
-                ? 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
-                : 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
-            }`}
-          >
-            <Upload size={20} />
-            <span>Upload File</span>
-          </label>
-          <input
-            id={inputId}
-            type="file"
-            accept="image/*"
-            onChange={onChange}
-            disabled={isUploading}
-            className="hidden"
-          />
-        </div>
+//           <label
+//             htmlFor={inputId}
+//             className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold cursor-pointer transition-all ${
+//               isUploading
+//                 ? 'opacity-50 cursor-not-allowed bg-gray-300'
+//                 : darkMode
+//                 ? 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+//                 : 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+//             }`}
+//           >
+//             <Upload size={20} />
+//             <span>Upload File</span>
+//           </label>
+//           <input
+//             id={inputId}
+//             type="file"
+//             accept="image/*"
+//             onChange={onChange}
+//             disabled={isUploading}
+//             className="hidden"
+//           />
+//         </div>
 
-        {/* Success Message */}
-        {photo && !isUploading && (
-          <div className="mt-3 flex items-center gap-2 p-2.5 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-            <CheckCircle className="text-green-600 dark:text-green-400 flex-shrink-0" size={16} />
-            <p className="text-xs text-green-700 dark:text-green-300 font-medium">
-              Image uploaded successfully to ImgBB
-            </p>
-          </div>
-        )}
-      </div>
+//         {/* Success Message */}
+//         {photo && !isUploading && (
+//           <div className="mt-3 flex items-center gap-2 p-2.5 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+//             <CheckCircle className="text-green-600 dark:text-green-400 flex-shrink-0" size={16} />
+//             <p className="text-xs text-green-700 dark:text-green-300 font-medium">
+//               Image uploaded successfully to ImgBB
+//             </p>
+//           </div>
+//         )}
+//       </div>
 
-      {/* Camera Modal */}
-      {showCamera && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-6 max-w-2xl w-full shadow-2xl`}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                📸 {capturedImage ? 'Review Photo' : 'Take Photo'}
-              </h3>
-              <button
-                onClick={handleCloseCamera}
-                className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-              >
-                <X size={20} className={darkMode ? 'text-gray-400' : 'text-gray-600'} />
-              </button>
-            </div>
+//       {/* Camera Modal */}
+//       {showCamera && (
+//         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+//           <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-6 max-w-2xl w-full shadow-2xl`}>
+//             <div className="flex justify-between items-center mb-4">
+//               <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+//                 📸 {capturedImage ? 'Review Photo' : 'Take Photo'}
+//               </h3>
+//               <button
+//                 onClick={handleCloseCamera}
+//                 className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+//               >
+//                 <X size={20} className={darkMode ? 'text-gray-400' : 'text-gray-600'} />
+//               </button>
+//             </div>
 
-            {cameraError && (
-              <div className="mb-4 p-4 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm flex items-start gap-2">
-                <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold">Camera Access Error</p>
-                  <p>{cameraError}</p>
-                </div>
-              </div>
-            )}
+//             {cameraError && (
+//               <div className="mb-4 p-4 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm flex items-start gap-2">
+//                 <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+//                 <div>
+//                   <p className="font-semibold">Camera Access Error</p>
+//                   <p>{cameraError}</p>
+//                 </div>
+//               </div>
+//             )}
 
-            {/* Camera/Preview Area */}
-            <div className="relative bg-black rounded-xl overflow-hidden mb-4 shadow-inner" style={{ aspectRatio: '4/3' }}>
-              {!capturedImage ? (
-                <>
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-cover"
-                  />
-                  {/* Camera Overlay Guide */}
-                  <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute inset-4 border-2 border-white/30 rounded-xl"></div>
-                  </div>
-                </>
-              ) : (
-                <img
-                  src={capturedImage}
-                  alt="Captured"
-                  className="w-full h-full object-cover"
-                />
-              )}
-            </div>
+//             {/* Camera/Preview Area */}
+//             <div className="relative bg-black rounded-xl overflow-hidden mb-4 shadow-inner" style={{ aspectRatio: '4/3' }}>
+//               {!capturedImage ? (
+//                 <>
+//                   <video
+//                     ref={videoRef}
+//                     autoPlay
+//                     playsInline
+//                     className="w-full h-full object-cover"
+//                   />
+//                   {/* Camera Overlay Guide */}
+//                   <div className="absolute inset-0 pointer-events-none">
+//                     <div className="absolute inset-4 border-2 border-white/30 rounded-xl"></div>
+//                   </div>
+//                 </>
+//               ) : (
+//                 <img
+//                   src={capturedImage}
+//                   alt="Captured"
+//                   className="w-full h-full object-cover"
+//                 />
+//               )}
+//             </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              {!capturedImage ? (
-                <>
-                  <button
-                    onClick={capturePhoto}
-                    disabled={!!cameraError}
-                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg transition-all transform hover:scale-105"
-                  >
-                    <Camera size={20} />
-                    Capture Photo
-                  </button>
-                  <button
-                    onClick={handleCloseCamera}
-                    className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                      darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-300 hover:bg-gray-400'
-                    }`}
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={retake}
-                    className={`flex-1 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
-                      darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-300 hover:bg-gray-400'
-                    }`}
-                  >
-                    <Camera size={20} />
-                    Retake
-                  </button>
-                  <button
-                    onClick={confirmCapture}
-                    className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-xl font-semibold hover:from-green-600 hover:to-green-700 flex items-center justify-center gap-2 shadow-lg transition-all transform hover:scale-105"
-                  >
-                    <Check size={20} />
-                    Use Photo
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+//             {/* Action Buttons */}
+//             <div className="flex gap-3">
+//               {!capturedImage ? (
+//                 <>
+//                   <button
+//                     onClick={capturePhoto}
+//                     disabled={!!cameraError}
+//                     className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg transition-all transform hover:scale-105"
+//                   >
+//                     <Camera size={20} />
+//                     Capture Photo
+//                   </button>
+//                   <button
+//                     onClick={handleCloseCamera}
+//                     className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+//                       darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-300 hover:bg-gray-400'
+//                     }`}
+//                   >
+//                     Cancel
+//                   </button>
+//                 </>
+//               ) : (
+//                 <>
+//                   <button
+//                     onClick={retake}
+//                     className={`flex-1 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+//                       darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-300 hover:bg-gray-400'
+//                     }`}
+//                   >
+//                     <Camera size={20} />
+//                     Retake
+//                   </button>
+//                   <button
+//                     onClick={confirmCapture}
+//                     className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-xl font-semibold hover:from-green-600 hover:to-green-700 flex items-center justify-center gap-2 shadow-lg transition-all transform hover:scale-105"
+//                   >
+//                     <Check size={20} />
+//                     Use Photo
+//                   </button>
+//                 </>
+//               )}
+//             </div>
+//           </div>
+//         </div>
+//       )}
 
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
-        }
-      `}</style>
-    </>
-  );
-};
+//       <style>{`
+//         @keyframes fadeIn {
+//           from { opacity: 0; }
+//           to { opacity: 1; }
+//         }
+//         .animate-fadeIn {
+//           animation: fadeIn 0.2s ease-out;
+//         }
+//       `}</style>
+//     </>
+//   );
+// };
 
 const ParticleExplosion = ({ x, y, color, onComplete }) => {
   const [particles, setParticles] = React.useState([]);
@@ -2437,8 +2437,8 @@ const ChecklistSection = ({ title, items, section, handleCheck, objective, handl
 };
 
 const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
-  const [employeePhoto, setEmployeePhoto] = useState(null);
-  const [bikePhoto, setBikePhoto] = useState(null);
+  //const [employeePhoto, setEmployeePhoto] = useState(null);
+  //const [bikePhoto, setBikePhoto] = useState(null);
   const [employeeType, setEmployeeType] = useState('rider');
   const [showSuccess, setShowSuccess] = useState(false);
   const [earnedPoints, setEarnedPoints] = useState(0);
@@ -2511,39 +2511,39 @@ const ChecklistForm = ({ onNavigate, onSubmit, user, darkMode }) => {
     }));
   }, [employeeType]);
 
-const handlePhotoUpload = async (e, type) => {
-  const file = e.target.files[0];
-  if (!file) return;
+// const handlePhotoUpload = async (e, type) => {
+//   const file = e.target.files[0];
+//   if (!file) return;
 
-  // Show loading state
-  if (type === 'employee') {
-    setEmployeePhoto('uploading...');
-  } else {
-    setBikePhoto('uploading...');
-  }
+//   // Show loading state
+//   if (type === 'employee') {
+//     setEmployeePhoto('uploading...');
+//   } else {
+//     setBikePhoto('uploading...');
+//   }
 
-  try {
-    // Upload to ImgBB
-    const imageUrl = await uploadImageToImgbb(file);
+//   try {
+//     // Upload to ImgBB
+//     const imageUrl = await uploadImageToImgbb(file);
     
-    // Store the URL
-    if (type === 'employee') {
-      setEmployeePhoto(imageUrl);
-    } else {
-      setBikePhoto(imageUrl);
-    }
-  } catch (error) {
-    console.error('Image upload failed:', error);
-    alert('❌ Image upload failed. Please try again.');
+//     // Store the URL
+//     if (type === 'employee') {
+//       setEmployeePhoto(imageUrl);
+//     } else {
+//       setBikePhoto(imageUrl);
+//     }
+//   } catch (error) {
+//     console.error('Image upload failed:', error);
+//     alert('❌ Image upload failed. Please try again.');
     
-    // Reset on error
-    if (type === 'employee') {
-      setEmployeePhoto(null);
-    } else {
-      setBikePhoto(null);
-    }
-  }
-};
+//     // Reset on error
+//     if (type === 'employee') {
+//       setEmployeePhoto(null);
+//     } else {
+//       setBikePhoto(null);
+//     }
+//   }
+// };
 
   const handleInputChange = (field, value) => {
     // Don't allow branch change for non-admin users
@@ -2624,13 +2624,14 @@ const handleSubmitForm = async () => {
   }
 
   // Additional check for uploading state
-  if (employeePhoto === 'uploading...' || bikePhoto === 'uploading...') {
-    alert('⏳ Please wait for image uploads to complete.');
-    return;
-  }
+  // if (employeePhoto === 'uploading...' || bikePhoto === 'uploading...') {
+  //   alert('⏳ Please wait for image uploads to complete.');
+  //   return;
+  // }
 
-  const result = await Database.saveChecklist(
-    { ...checklist, employeePhoto, bikePhoto },
+  //const result = await Database.saveChecklist(
+    //{ ...checklist, employeePhoto, bikePhoto },
+    { ...checklist, employeePhoto: null, bikePhoto: null },
     user.username
   );
   
@@ -3071,22 +3072,7 @@ const handleSubmitForm = async () => {
     </div>
   </div>
 )}
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <PhotoUpload
-    label="Employee Photo"
-    photo={employeePhoto}
-    onChange={e => handlePhotoUpload(e, 'employee')}
-    darkMode={darkMode}
-  />
-  {employeeType === 'rider' && (
-    <PhotoUpload
-      label="Bike Photo"
-      photo={bikePhoto}
-      onChange={e => handlePhotoUpload(e, 'bike')}
-      darkMode={darkMode}
-    />
-  )}
-</div>
+
 
 
           {/* Rider-only sections */}
