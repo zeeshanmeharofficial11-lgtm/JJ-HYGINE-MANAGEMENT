@@ -11,7 +11,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { FileText } from 'lucide-react'; // make sure FileText is included
 
-const IMGBB_API_KEY = '8543ee115716871c73ec83e77fb3ea0e';
+const IMGBB_API_KEY = 'ba159ffbb460f375283f7f4ff00717cb';
 
 async function uploadImageToImgbb(file) {
   const formData = new FormData();
